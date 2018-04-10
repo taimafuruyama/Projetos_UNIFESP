@@ -167,10 +167,6 @@ namespace multi_dimensional_array
 			int MaxParticles = 1000000;					// Limite máximo de partículas que quero impor para cada ciclo (linha)
 			int ParticlesInThisCycle = ParticlesInCycle(Matrix, i);        // Quantidade de partículas somadas por ciclo (linha)
 
-			//int R = 0;                                  // Aqui posso dizer que é zero??? 
-			//Não, você está dizendo, na linha de baixo, que o tamanho do seu array é zero, zero posições
-			
-			
 			int[] StatusR = new int[Class];                 // Declarando o array que é a lista abaixo
 			StatusR[0] = Matrix[i, 0];
 			StatusR[1] = Matrix[i, 0] + Matrix[i, 1];
