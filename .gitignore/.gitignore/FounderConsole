@@ -131,8 +131,6 @@ namespace multi_dimensional_array
 			return Particles;
 		}
 
-
-
 		// PSEUDOCODIGO PARA SORTEIO E SELEÇÃO DE PARTÍCULAS PARA REDUÇÃO EM MAXPARTICLES POR CICLO (MÉTODO DIOGO)
 		
 		// Para cada ciclo: enquanto SOMALINHA > MAXPARTICLES
