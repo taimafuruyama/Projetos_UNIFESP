@@ -148,14 +148,14 @@ namespace multi_dimensional_array
 
 		// PSEUDOCODIGO PARA SORTEIO E SELEÇÃO DE PARTÍCULAS PARA REDUÇÃO EM MAXPARTICLES POR CICLO (MÉTODO MARCOS) = É o que será usado!!!
 		
+		// Faz um arrray (lista) ordenando as quantidades de partículas da seguinte forma (em um mesmo ciclo):
+    	// Array [0] = classe zero = quantidade de partículas na classe zero, ou seja, R0
+    	// Array [1] = quantidade de partículas em R0 + quantidade de partículas em R1;
+    	// Array [2] = quantidade de partículas em R0 + quantidade de partículas em R1 + quantidade de particulas em R2;
+    	// E assim por diante. Dessa forma, cada posição deste array poderá ter um valor máximo.
+		
 		// Para cada ciclo: enquanto SOMALINHA > MAXPARTICLES
     		// Sorteio de número (Sorteado) < SomaLinha
-    		// Faz um arrray (lista) ordenando as quantidades de partículas da seguinte forma (em um mesmo ciclo):
-    		// Array [0] = classe zero = quantidade de partículas na classe zero, ou seja, R0
-    		// Array [1] = quantidade de partículas em R0 + quantidade de partículas em R1;
-    		// Array [2] = quantidade de partículas em R0 + quantidade de partículas em R1 + quantidade de particulas em R2;
-    		// E assim por diante. Dessa forma, cada posição deste array poderá ter um valor máximo.
-    	
     		// Se o número sorteado for (0 < Sorteado <= Array[0]),
     		    // Matriz [Ciclo, 0] perderá uma partícula.
     		
@@ -167,10 +167,6 @@ namespace multi_dimensional_array
 			int MaxParticles = 1000000;					// Limite máximo de partículas que quero impor para cada ciclo (linha)
 			int ParticlesInThisCycle = ParticlesInCycle(Matrix, i);        // Quantidade de partículas somadas por ciclo (linha)
 
-			//int R = 0;                                  // Aqui posso dizer que é zero??? 
-			//Não, você está dizendo, na linha de baixo, que o tamanho do seu array é zero, zero posições
-			
-			
 			int[] StatusR = new int[Class];                 // Declarando o array que é a lista abaixo
 			StatusR[0] = Matrix[i, 0];
 			StatusR[1] = Matrix[i, 0] + Matrix[i, 1];
