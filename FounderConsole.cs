@@ -80,6 +80,20 @@ namespace multi_dimensional_array
 			double RandomNumber;
 			//RandomNumber = rnd.NextDouble();
 			//RandomNumber = 0.2;
+			
+			// mutação deletéria = 90,0% de probabilidade (0,9)
+			// mutação benéfica = 0,5% de probabilidade (0,005)
+			// mutação neutra = 9,5% de probabilidade (0,095)
+
+			// para efeitos de sorteio, qualquer número entre 0 e 0,9 será mutação deletéria
+			// qualquer número acima de 0,995 será mutação benéfica. Ou seja, o número sorteado precisa estar em um 
+			// pequeno intervalo de 0,005 só que colocamos este intervalo na parte superior do intervalo entre 0 e 1
+			// e qualquer número entre 0,9 e 0,995 será mutação neutra. Não precisamos definir a mutação neutra, 
+			// pois no código de comparação, o número sorteado deverá ser maior que 0,9 (deletéria) e menor que 
+			// 0,995 (benéfica)
+
+			double DeleteriousProbability = 0.9;
+			double BeneficialProbability = 1 - 0,005; // ou, 0,995
 
 			// Here the probabilities numbers for each mutation is defined.
 			double DeleteriousProbability = 0.8;
