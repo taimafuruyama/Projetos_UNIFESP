@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Diagnostics; // used for the Stopwatch Class
+using System.Threading; // used for the Stopwatch Class
 
 // TODO aumentar poder dos valores = números maiores (double por exemplo - maior e mais preciso).
 // TODO limite de partículas por ciclo
@@ -21,6 +23,10 @@ namespace multi_dimensional_array
 {
 	public class Program
 	{
+		// create and start the Stopwatch Class. See: https://msdn.microsoft.com/en-us/library/system.diagnostics.stopwatch
+		Stopwatch ProgramTimer = new Stopwatch();
+       	ProgramTimer.Start();
+		
 		// Definition of Cycle
 		public const int Cycle = 10;
 
@@ -66,7 +72,15 @@ namespace multi_dimensional_array
 				// print which Cycle was finished just to give a user feedback, because it was taking too long to run.
 				Console.WriteLine("Cycles processed: {0}", i);
 			}
+			ProgramTimer.Stop();
 			PrintOutput(Matrix);
+			
+			// Get the elapsed time as a TimeSpan value.
+       		TimeSpan ts = ProgramTimer.Elapsed;
+
+       		 // Format and display the TimeSpan value.
+       		string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+        	Console.WriteLine("Total Run Time: " + elapsedTime);
 		}
 
 		static void ApplyMutationsProbabilities(int[,] Matrix, int i, int j)
