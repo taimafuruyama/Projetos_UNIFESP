@@ -120,13 +120,13 @@ namespace multi_dimensional_array
 					}
 
 					// Neutra: Random maior do que 0.8, menor do que 0.95
-					if (RandomNumber > DeleteriousProbability && RandomNumber < NeutralProbability)			
+					if (RandomNumber > DeleteriousProbability && RandomNumber < BeneficialProbability)			
 					{
 						Matrix[i, j] = Matrix[i, j];
 					}
 
 					// Benéfica: maior ou igual à neutra
-					if (RandomNumber >= NeutralProbability)
+					if (RandomNumber >= BeneficialProbability)
 					{
 						if (i > 0)
 						{
