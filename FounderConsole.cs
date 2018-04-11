@@ -76,11 +76,11 @@ namespace multi_dimensional_array
 			PrintOutput(Matrix);
 			
 			// Get the elapsed time as a TimeSpan value.
-       		TimeSpan ts = ProgramTimer.Elapsed;
+			TimeSpan ts = ProgramTimer.Elapsed;
 
-       		 // Format and display the TimeSpan value.
-       		string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-        	Console.WriteLine("Total Run Time: " + elapsedTime);
+			// Format and display the TimeSpan value.
+			string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+			Console.WriteLine("Total Run Time: " + elapsedTime);
 		}
 
 		static void ApplyMutationsProbabilities(int[,] Matrix, int i, int j)
