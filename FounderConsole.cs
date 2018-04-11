@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.IO;
 
+// VEJA SE ESSA MODIFICAÇÃO FUNCIONA
+
 		// TODO aumentar poder dos valores = números maiores (double por exemplo - maior e mais preciso).
 		// TODO limite de partículas por ciclo
 		// TODO fazer mutação deletéria com probabilidade fixa
