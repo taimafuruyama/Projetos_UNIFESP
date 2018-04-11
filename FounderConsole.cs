@@ -95,10 +95,6 @@ namespace multi_dimensional_array
 			double DeleteriousProbability = 0.9;
 			double BeneficialProbability = 1 - 0,005; // ou, 0,995
 
-			// Here the probabilities numbers for each mutation is defined.
-			double DeleteriousProbability = 0.8;
-			double NeutralProbability = 0.95;
-
 			if (Matrix[i, j] > 0)
 			{
 				for (int x = Matrix[i, j]; x > 0; x--)
