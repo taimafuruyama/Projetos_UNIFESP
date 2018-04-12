@@ -9,8 +9,7 @@ using System.Threading;			// used for the Stopwatch Class
 
 // TODO aumentar poder dos valores = números maiores (double por exemplo - maior e mais preciso).
 // TODO limite de partículas por ciclo
-// TODO fazer mutação deletéria com probabilidade fixa
-// TODO fazer mutação e neutra com probabilidade fixa
+// TODO fazer mutação benéfica e neutra com probabilidade fixa
 // TODO fazer mutações com probabilidades aleatórias
 // TODO *** avaliar quando encerrar um paciente e passar para o próximo (média das classes for constante)
 // TODO fazer mais de um paciente
@@ -53,6 +52,9 @@ namespace multi_dimensional_array
 			// The "InitialParticles" is the amount of viral particles that exists in the class 10 on the cycle zero.
 			// That is: these 5 particles have the potential to create 10 particles each.
 			Matrix[0, 10] = InitialParticles;
+			
+			// TODO put the for loop below inside a function lik POPULATEMATRIX, 
+			// because the main function is getting too big adaing
 
 			// Main Loop to create more particles on the next Cycles from the Cycle Zero (lines values).
 			// Each matrix position will bring a value. This value will be mutiplied by its own class number (column value).  
