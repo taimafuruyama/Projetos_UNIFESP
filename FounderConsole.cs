@@ -42,7 +42,7 @@ namespace multi_dimensional_array
 			// create and start the Stopwatch Class. From: https://msdn.microsoft.com/en-us/library/system.diagnostics.stopwatch
 			Stopwatch stopWatch = new Stopwatch();
 			stopWatch.Start();
-			Thread.Sleep(10000);
+***			Thread.Sleep(10000); *** THREAD = É UM INTERVALO DE PROCESSAMENTO ENTRE UM PROCESSADOR E OUTRO.
 						
 			// Declaring the two-dimensional Matrix: it has x lines of Cycles and y columns of Classes, defined by the variables above. 
 			int[,] Matrix = new int[Cycle, Class];
@@ -62,7 +62,7 @@ namespace multi_dimensional_array
 			{
 				for (int j = 0; j < Class; j++)
 				{
-					if (i > 0)
+***					if (i > 0)
 					{
 						// Multiplies the number os particles from de previous Cycle by the Class number which belongs.
 						// This is the progeny composition.
@@ -71,9 +71,20 @@ namespace multi_dimensional_array
 						//Matrix[i, j] = TempMatrix[i, j];
 						//Matrix[i, j] = 0;
 					}
-					CutOffMaxParticlesPerCicle(Matrix, i);
 					ApplyMutationsProbabilities(Matrix, i, j);
 				}
+				** CRIA UM VIÉS DE "VICIAR" DENTRO DO LOOP DO J. PARTÍCULAS VELHAS PODEM PARTICIPAR VÁRIAS VEZES DO SORTEIO, UMA NOVA CAI MENOS.					
+				CutOffMaxParticlesPerCicle(Matrix, i);
+
+				int Temporario1;
+				int Temporario2;
+				for (int j = 0; j < Class; j++)
+				{
+					Temporario1 = Matrix[i,(j+1)];
+				}
+				Temporario2 = Matrix [i,0];
+				Matriz [i,j] = Temporario2;
+				
 				// print which Cycle was finished just to give a user feedback, because it was taking too long to run.
 				Console.WriteLine("Cycles processed: {0}", i);
 			}
@@ -91,7 +102,7 @@ namespace multi_dimensional_array
 
 		static void ApplyMutationsProbabilities(int[,] Matrix, int i, int j)
 		{
-			// This function will apply three probabilities: Deleterious, Beneficial or Neutral.
+IF (I==0){RETURN;}//DE FORMA QUE ELE NÃO RODE. AÍ DISPENSO O IF>0. 	// This function will apply three probabilities: Deleterious, Beneficial or Neutral.
 			// Their roles is to simulate real mutations of virus genome.
 			// So here, there are mutational probabilities, which will bring an stochastic scenario sorting the progenies by the classes.
 
@@ -115,7 +126,7 @@ namespace multi_dimensional_array
 			double DeleteriousProbability = 0.9;
 			double BeneficialProbability = 0.995; // ou 1 - 0.005
 
-			if (Matrix[i, j] > 0)
+			if (Matrix[i, j] > 0) ****DESNECESSARIO, POIS O FOR VAI FAZER A FUNÇÃO DESTE IF
 			{
 				for (int x = Matrix[i, j]; x > 0; x--)
 				{
@@ -129,38 +140,35 @@ namespace multi_dimensional_array
 					if (RandomNumber < DeleteriousProbability)
 					// Deleterious Mutation = 90,0% probability (0.9)
 					{
-						if (i > 0)
+						if (i > 0) ** DÁ PARA TIRAR COM A CONDIÇÃO DO INICIO DA FUNÇÃO
 						{
 							//Matrix[(i - 1), j]++;
 							//TempMatrix[i, j]--;
 
-							Matrix[i, (j - 1)] = Matrix[i, (j - 1)] + 1;
-							Matrix[i, j] = Matrix[i, j] - 1;
+Matrix[i, (j - 1)]++					Matrix[i, (j - 1)] = Matrix[i, (j - 1)] + 1;
+Matrix[i, j]--						Matrix[i, j] = Matrix[i, j] - 1;
 						}
+						
 					}
-
-					if (RandomNumber > DeleteriousProbability && RandomNumber < BeneficialProbability)
-					// Neutral Mutation = 9,5% probability (0.095)
-					{
-						Matrix[i, j] = Matrix[i, j];
-					}
-
-					if (RandomNumber >= BeneficialProbability)
+					ELSE if (RandomNumber < BeneficialProbability + DELETERIUS) [OK ]
 					// Beneficial Mutation = 0,5% probability (0.005)
 					{
 						if (i > 0)
 						{
-							if (j < (Class - 1))
+							if (j < (Class - 1)) *** É IMPORTANTE COLOCAR CLASS -1, POIS ESTÁ CONTANDO O ZERO, E A CLASSE 10 PARA BENEFICA SE COMPORTA COMO NEUTRA, ENTÃO, AS CONDIÇÕES 99.
 							{
-								Matrix[i, (j + 1)] = Matrix[i, (j + 1)] + 1;
-								Matrix[i, j] = Matrix[i, j] - 1;
+**								Matrix[i, (j + 1)] = Matrix[i, (j + 1)] + 1;
+**								Matrix[i, j] = Matrix[i, j] - 1;
 							}
-							if (j == Class)
-							{
+** PODE SER UM ELSE							if (j == Class)
+** ELA DEVE SER UMA NEUTRA, NÃO HÁ BENÉFICA PARA CLASSE 10							{
 								Matrix[i, j] = Matrix[i, j] + 1;
 							}
+							
 						}
 					}
+					ELSE 
+					{ NEUTRA }
 				}
 			}
 
