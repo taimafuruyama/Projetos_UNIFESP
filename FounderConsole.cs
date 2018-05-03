@@ -2,15 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;			// used to create an output file (.txt)
-using System.Diagnostics; 		// used for the Stopwatch Class
-using System.Threading;			// used for the Stopwatch Class
+using System.IO;            // used to create an output file (.txt)
+using System.Diagnostics;       // used for the Stopwatch Class
+using System.Threading;         // used for the Stopwatch Class
 
 
 // TODO aumentar poder dos valores = números maiores (double por exemplo - maior e mais preciso).
-// TODO limite de partículas por ciclo
-// TODO fazer mutação benéfica e neutra com probabilidade fixa
-// TODO fazer mutações com probabilidades aleatórias
 // TODO *** avaliar quando encerrar um paciente e passar para o próximo (média das classes for constante)
 // TODO fazer mais de um paciente
 // TODO fazer simulação definindo em quais ciclos ocorrem infecções e deixar pacientes inicais rodando
@@ -21,11 +18,10 @@ using System.Threading;			// used for the Stopwatch Class
 
 namespace multi_dimensional_array
 {
-	public class Program
+	public class ProgramMarcos
 	{
-
 		// Definition of Cycle
-		public const int Cycle = 10;
+		public const int Cycle = 15;
 
 		// Definition of Class
 		public const int Class = 11;
@@ -36,14 +32,19 @@ namespace multi_dimensional_array
 		// The "InitialParticles" is the initial amount of viral particles, that is: the initial virus population of a infection.
 		public const int InitialParticles = 5;
 
+		// Lists to keep the number of particles that go up or down the classes, during mutations
+		static int[] ClassUpParticles = new int[Cycle];
+		static int[] ClassDownParticles = new int[Cycle];
 
 		static void Main(string[] args)
 		{
+			Random rnd = new Random();
+
 			// create and start the Stopwatch Class. From: https://msdn.microsoft.com/en-us/library/system.diagnostics.stopwatch
 			Stopwatch stopWatch = new Stopwatch();
 			stopWatch.Start();
-			Thread.Sleep(10000);
-						
+			//Thread.Sleep(10000);
+
 			// Declaring the two-dimensional Matrix: it has x lines of Cycles and y columns of Classes, defined by the variables above. 
 			int[,] Matrix = new int[Cycle, Class];
 			//int[,] TempMatrix = new int[Cycle, Class];
@@ -52,12 +53,27 @@ namespace multi_dimensional_array
 			// The "InitialParticles" is the amount of viral particles that exists in the class 10 on the cycle zero.
 			// That is: these 5 particles have the potential to create 10 particles each.
 			Matrix[0, 10] = InitialParticles;
-			
-			// TODO put the for loop below inside a function lik POPULATEMATRIX, 
-			// because the main function is getting too big adaing
+			//Matrix[0, 2] = InitialParticles;
+
+			RunPatients(Matrix, rnd);
+
+			stopWatch.Stop();
+			// Get the elapsed time as a TimeSpan value.
+			TimeSpan ts = stopWatch.Elapsed;
+			PrintOutput(Matrix);
+
+			// Format and display the TimeSpan value.
+			string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+			Console.WriteLine("Total Run Time: " + elapsedTime);
+			Console.Write("\n");
+			Console.ReadKey();
+		}
+
+		static void RunPatients(int[,] Matrix, Random rndx)
+		{
 
 			// Main Loop to create more particles on the next Cycles from the Cycle Zero (lines values).
-			// Each matrix position will bring a value. This value will be mutiplied by its own class number (column value).  
+			// Each matrix position will bring a value. This value will be mutiplied by its own class number (column value). 
 			for (int i = 0; i < Cycle; i++)
 			{
 				for (int j = 0; j < Class; j++)
@@ -67,88 +83,77 @@ namespace multi_dimensional_array
 						// Multiplies the number os particles from de previous Cycle by the Class number which belongs.
 						// This is the progeny composition.
 						Matrix[i, j] = Matrix[(i - 1), j] * j;
-
-						//Matrix[i, j] = TempMatrix[i, j];
-						//Matrix[i, j] = 0;
 					}
-					CutOffMaxParticlesPerCicle(Matrix, i);
-					ApplyMutationsProbabilities(Matrix, i, j);
 				}
-				// print which Cycle was finished just to give a user feedback, because it was taking too long to run.
+
+				CutOffMaxParticlesPerCycle(Matrix, i, rndx);
+				ApplyMutationsProbabilities(Matrix, i);
+
+				// print which Cycle was finished just to give user feedback, because it may take too long to run.
 				Console.WriteLine("Cycles processed: {0}", i);
 			}
-			stopWatch.Stop();
-			// Get the elapsed time as a TimeSpan value.
-			TimeSpan ts = stopWatch.Elapsed;
-			PrintOutput(Matrix);
-
-			// Format and display the TimeSpan value.
-			string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds,	ts.Milliseconds / 10);
-			Console.WriteLine("Total Run Time: " + elapsedTime);
-			Console.Write("\n");
 		}
 
-
-		static void ApplyMutationsProbabilities(int[,] Matrix, int i, int j)
+		static void ApplyMutationsProbabilities(int[,] Matrix, int i)
 		{
 			// This function will apply three probabilities: Deleterious, Beneficial or Neutral.
 			// Their roles is to simulate real mutations of virus genome.
 			// So here, there are mutational probabilities, which will bring an stochastic scenario sorting the progenies by the classes.
 
+			int UpParticles = 0;
+			int DownParticles = 0;
+
 			// Here a random number greater than zero and less than one is selected. 
-			Random rnd = new Random();      
+			Random rnd = new Random();
 			double RandomNumber;
 			//RandomNumber = rnd.NextDouble();
 			//RandomNumber = 0.2;
+			//RandomNumber = 0.903;
 
 			// mutação deletéria = 90,0% de probabilidade (0,9)
 			// mutação benéfica = 0,5% de probabilidade (0,005)
 			// mutação neutra = 9,5% de probabilidade (0,095)
 			// para efeitos de sorteio, qualquer número entre 0 e 0,9 será mutação deletéria
-			// qualquer número acima de 0,995 será mutação benéfica. 
-			// Ou seja, o número sorteado precisa estar em um pequeno intervalo de 0,005 só que colocamos este intervalo na 
-			// parte superior do intervalo entre 0 e 1 e qualquer número entre 0,9 e 0,995 será mutação neutra.
-			// Não precisamos definir a mutação neutra, pois no código de comparação, o número sorteado deverá ser maior que 0,9 (deletéria) 
-			// e menor que 0,995 (benéfica)
-			
+			// qualquer número entre 0,9 e 0,905 será mutação benéfica. 
+			// Ou seja, o número sorteado precisa estar em um pequeno intervalo de 0,005 só que colocamos este intervalo acima de 0,9 
+			// Qualquer número acima de 0,905 será mutação neutra
+			// Não precisamos definir a mutação neutra, pois no código de comparação, o número sorteado deverá ser maior que 0,905 (deletéria + benéfica) 
+
 			// Here the probabilities numbers for each mutation is defined.
 			double DeleteriousProbability = 0.9;
-			double BeneficialProbability = 0.995; // ou 1 - 0.005
+			double BeneficialProbability = 0.005;
 
-			if (Matrix[i, j] > 0)
+			int[] ThisCycle = new int[Class];
+
+			for (int j = 0; j < Class; j++)
 			{
-				for (int x = Matrix[i, j]; x > 0; x--)
+				ThisCycle[j] = Matrix[i, j];
+			}
+
+			for (int j = 0; j < Class; j++)
+			{
+				if (ThisCycle[j] > 0 && i > 0)
 				{
-					// In this loop, for each particle removed from the Matrix [i,j], a random number is selected.
-					RandomNumber = rnd.NextDouble();
-
-					// If the random number is less than the DeleteriousProbability defined, one particle of the previous Cycle will 
-					// decrease one Class number. Remember this function is inside a loop for each i and each j values.
-					// So this loop will run through the whole Matrix, particle by particle on its own positions. 
-
-					if (RandomNumber < DeleteriousProbability)
-					// Deleterious Mutation = 90,0% probability (0.9)
+					for (int particles = ThisCycle[j]; particles > 0; particles--)
 					{
-						if (i > 0)
-						{
-							//Matrix[(i - 1), j]++;
-							//TempMatrix[i, j]--;
+						// In this loop, for each particle removed from the Matrix [i,j], a random number is selected.
+						RandomNumber = rnd.NextDouble();
 
+						// If the random number is less than the DeleteriousProbability defined, one particle of the previous Cycle will 
+						// decrease one Class number. Remember this function is inside a loop for each i and each j values.
+						// So this loop will run through the whole Matrix, particle by particle on its own positions. 
+
+						if (RandomNumber < DeleteriousProbability)
+						// Deleterious Mutation = 90,0% probability (0.9)
+						{
 							Matrix[i, (j - 1)] = Matrix[i, (j - 1)] + 1;
 							Matrix[i, j] = Matrix[i, j] - 1;
+
+							DownParticles++;
 						}
-					}
 
-					if (RandomNumber > DeleteriousProbability && RandomNumber < BeneficialProbability)
-					// Neutral Mutation = 9,5% probability (0.095)
-					{
-						Matrix[i, j] = Matrix[i, j];
-					}
-
-					if (RandomNumber >= BeneficialProbability)
-					// Beneficial Mutation = 0,5% probability (0.005)
-					{
-						if (i > 0)
+						else if (RandomNumber < (DeleteriousProbability + BeneficialProbability))
+						// Beneficial Mutation = 0,5% probability (0.005)
 						{
 							if (j < (Class - 1))
 							{
@@ -159,10 +164,15 @@ namespace multi_dimensional_array
 							{
 								Matrix[i, j] = Matrix[i, j] + 1;
 							}
+
+							UpParticles++;
 						}
 					}
 				}
 			}
+
+			ClassUpParticles[i] = UpParticles;
+			ClassDownParticles[i] = DownParticles;
 
 			// PSEUDOCODIGO (para melhor compreensão no desenvolvimento):
 
@@ -182,7 +192,7 @@ namespace multi_dimensional_array
 			// Se o valor sorteado for maior do que a mutação deletéria, mas menor do que a mutação neutra, ou seja,
 			// se o valor sorteado for maior do que 0.9 e menor do que 0.95
 			// as partículas não se alteram.
-			
+
 			// MUTAÇÃO BENÉFICA
 			// Se o valor sorteado for maior ou igual à probalidade da mutação neutra (valor sorteado maior ou igual à 0.95)
 			// número de partículas da classe R perde 1 partícula
@@ -232,23 +242,12 @@ namespace multi_dimensional_array
 
 		// Assim vai até a SomaLinha chegar no MaxParticles determinado.
 
-		static void CutOffMaxParticlesPerCicle(int[,] Matrix, int i)
+		static void CutOffMaxParticlesPerCycle(int[,] Matrix, int i, Random rndx)
 		{
-			int MaxParticles = 1000000;								   // Limite máximo de partículas que quero impor para cada ciclo (linha)
-			int ParticlesInThisCycle = ParticlesInCycle(Matrix, i);	   // Quantidade de partículas somadas por ciclo (linha)
+			int MaxParticles = 1000000;                                // Limite máximo de partículas que quero impor para cada ciclo (linha)
+			int ParticlesInThisCycle = ParticlesInCycle(Matrix, i);    // Quantidade de partículas somadas por ciclo (linha)
 
-			int[] StatusR = new int[Class];							   // Declarando o array que é a lista abaixo
-			StatusR[0] = Matrix[i, 0];
-			StatusR[1] = Matrix[i, 0] + Matrix[i, 1];
-			StatusR[2] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2];
-			StatusR[3] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3];
-			StatusR[4] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4];
-			StatusR[5] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5];
-			StatusR[6] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6];
-			StatusR[7] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7];
-			StatusR[8] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8];
-			StatusR[9] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8] + Matrix[i, 9];
-			StatusR[10] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8] + Matrix[i, 9] + Matrix[i, 10];
+			int[] StatusR = new int[Class];                            // Declarando o array que é a lista abaixo
 
 			// Se, x = ParticlesInCycle, for maior do que o núm MaxParticles definido, então...
 			if (ParticlesInThisCycle > MaxParticles)
@@ -261,9 +260,23 @@ namespace multi_dimensional_array
 				// PARTICLES is equal to PARTICLESINTHISCYCLE, but we don't want to modifify PARTICLESINTHISCYCLE while the for loop is running
 				// also, PARTICLESINTHISCYCLE was created outside the for loop, for other purpose
 				{
+
+
+					StatusR[0] = Matrix[i, 0];
+					StatusR[1] = Matrix[i, 0] + Matrix[i, 1];
+					StatusR[2] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2];
+					StatusR[3] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3];
+					StatusR[4] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4];
+					StatusR[5] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5];
+					StatusR[6] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6];
+					StatusR[7] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7];
+					StatusR[8] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8];
+					StatusR[9] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8] + Matrix[i, 9];
+					StatusR[10] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8] + Matrix[i, 9] + Matrix[i, 10];
+
+
 					// Gero um número aleatório de 0 ao limite do valor de soma de partículas por ciclo (linha) = ParticlesInCycle
 					// int RandomMaxParticles;
-					Random rndx = new Random();
 					int rndParticle = rndx.Next(1, ParticlesInCycle(Matrix, i));
 
 					// Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
@@ -318,9 +331,11 @@ namespace multi_dimensional_array
 			}
 		}
 
-
 		static void PrintOutput(int[,] Matrix)
 		{
+			double PercentageOfParticlesUp = 0.0;
+			double PercentageOfParticlesDown = 0.0;
+
 			StreamWriter writer = new StreamWriter("numbers.txt");
 			// The writer will bring the output file (txt in this case)
 			// Ensure the writer will be closed when no longer used
@@ -345,11 +360,16 @@ namespace multi_dimensional_array
 						writer.Write("{0}\t", Matrix[i, j]);
 					}
 
+					PercentageOfParticlesUp = (Convert.ToDouble(ClassUpParticles[i]) / Convert.ToDouble(ParticlesInCycle(Matrix, i)))*100;
+					PercentageOfParticlesDown = (Convert.ToDouble(ClassDownParticles[i]) / Convert.ToDouble(ParticlesInCycle(Matrix, i))) * 100;
+
 					Console.WriteLine("\nSoma do ciclo {0}: {1}", i, ParticlesInCycle(Matrix, i));
+					Console.WriteLine("Particles Up: {0}, {1} %", ClassUpParticles[i], PercentageOfParticlesUp);
+					Console.WriteLine("Particles Down: {0}, {1} %", ClassDownParticles[i], PercentageOfParticlesDown);
 					Console.Write("\n");
+
 					writer.WriteLine("\n");
 				}
-				Console.ReadLine();
 			}
 		}
 	}
