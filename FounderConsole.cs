@@ -2,15 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;            // used to create an output file (.txt)
-using System.Diagnostics;       // used for the Stopwatch Class
-using System.Threading;         // used for the Stopwatch Class
+using System.IO;				
+using System.Diagnostics;       
+using System.Threading;        
 
-
-// TODO aumentar poder dos valores = números maiores (double por exemplo - maior e mais preciso).
+// TODO opção de definir probabilidade da mutação deletéria em cada infecção, de acordo com o ciclo determinado (trabalhar com intervalos)
+// esta probabilidade estará sempre atrelada ao ciclo de infecção
+// TODO BUG para poucas partículas, porcentagem de partículas que descem de classe pode dar mais de 100%, pois cálculo é feito
+// no final do código, e o valor utilizado para o código é o da mutação
 // TODO *** avaliar quando encerrar um paciente e passar para o próximo (média das classes for constante)
-// TODO fazer mais de um paciente
-// TODO fazer simulação definindo em quais ciclos ocorrem infecções e deixar pacientes inicais rodando
+// TODO fazer simulação definindo em quais ciclos ocorrem infecções
 // TODO interface gráfica (gráficos em tempo real, novas janelas para cada paciente etc)
 
 // TODO: A INTRO explanation about this program, the main use, the aim, how it works, the output and what to do with.
@@ -20,21 +21,34 @@ namespace multi_dimensional_array
 {
 	public class ProgramMarcos
 	{
-		// Definition of Cycle
-		public const int Cycle = 15;
+		// Number of Cycles
+		public const int Cycle = 10;
 
-		// Definition of Class
+		// Number of Classes
 		public const int Class = 11;
 
-		// Definition of Patient
-		public const int Patient = 0;
+		// Number of Patients
+		public const int Patient = 10;
 
+		static int[] InfectionCycle = new int[Patient];
+
+		//static int[,,] ParticlesThatInfected = new int[Patient, Cycle, Class];
+		
 		// The "InitialParticles" is the initial amount of viral particles, that is: the initial virus population of a infection.
 		public const int InitialParticles = 5;
 
+		public const int MaxParticles = 1000000; // Limite máximo de partículas que quero impor para cada ciclo (linha)
+
+		//public const double DeleteriousProbability = 0.9;
+		static double[] DeleteriousProbability = new double[Patient];
+		public const double BeneficialProbability = 0.005;
+
+		// NOT USED YET
+		//public const int BottleneckParticles = 10;
+
 		// Lists to keep the number of particles that go up or down the classes, during mutations
-		static int[] ClassUpParticles = new int[Cycle];
-		static int[] ClassDownParticles = new int[Cycle];
+		static int[,] ClassUpParticles = new int[Patient, Cycle];
+		static int[,] ClassDownParticles = new int[Patient, Cycle];
 
 		static void Main(string[] args)
 		{
@@ -45,21 +59,23 @@ namespace multi_dimensional_array
 			stopWatch.Start();
 			//Thread.Sleep(10000);
 
-			// Declaring the two-dimensional Matrix: it has x lines of Cycles and y columns of Classes, defined by the variables above. 
-			int[,] Matrix = new int[Cycle, Class];
-			//int[,] TempMatrix = new int[Cycle, Class];
+			FillInfectionCycleArray(2, 1); // FIRST PARAMETER: initial cycle, SECOND PARAMENTER: increment
+			FillDeleteriousArray(0.3, 0.0); // FIRST PARAMETER: initial probability, SECOND PARAMENTER: increment
 
-			// The Matrix starts on the 10th position (column) on the line zero. 
+			// Declaring the three-dimensional Matrix: it has p Patient, x lines of Cycles and y columns of Classes, defined by the variables above. 
+			int[,,] Matrix = new int[Patient, Cycle, Class];
+			
+			// The Matrix starts on the Patient 0, 10th position (column) on the line zero. 
 			// The "InitialParticles" is the amount of viral particles that exists in the class 10 on the cycle zero.
 			// That is: these 5 particles have the potential to create 10 particles each.
-			Matrix[0, 10] = InitialParticles;
-			//Matrix[0, 2] = InitialParticles;
+			Matrix[0, 0, 10] = InitialParticles;
 
 			RunPatients(Matrix, rnd);
 
 			stopWatch.Stop();
 			// Get the elapsed time as a TimeSpan value.
 			TimeSpan ts = stopWatch.Elapsed;
+
 			PrintOutput(Matrix);
 
 			// Format and display the TimeSpan value.
@@ -69,32 +85,86 @@ namespace multi_dimensional_array
 			Console.ReadKey();
 		}
 
-		static void RunPatients(int[,] Matrix, Random rndx)
+		static void FillInfectionCycleArray(int InitialCycle, int Increment)
 		{
-
-			// Main Loop to create more particles on the next Cycles from the Cycle Zero (lines values).
-			// Each matrix position will bring a value. This value will be mutiplied by its own class number (column value). 
-			for (int i = 0; i < Cycle; i++)
+			for(int i = 0; i < InfectionCycle.GetLength(0); i++)
 			{
-				for (int j = 0; j < Class; j++)
+				if(i == 0)
 				{
-					if (i > 0)
+					InfectionCycle[i] = InitialCycle;
+				}
+				else
+				{
+					if(InfectionCycle[i - 1] + Increment < Cycle)
 					{
-						// Multiplies the number os particles from de previous Cycle by the Class number which belongs.
-						// This is the progeny composition.
-						Matrix[i, j] = Matrix[(i - 1), j] * j;
+						InfectionCycle[i] = InfectionCycle[i - 1] + Increment;
+					}
+					else
+					{
+						InfectionCycle[i] = InfectionCycle[i - 1];
 					}
 				}
-
-				CutOffMaxParticlesPerCycle(Matrix, i, rndx);
-				ApplyMutationsProbabilities(Matrix, i);
-
-				// print which Cycle was finished just to give user feedback, because it may take too long to run.
-				Console.WriteLine("Cycles processed: {0}", i);
 			}
 		}
 
-		static void ApplyMutationsProbabilities(int[,] Matrix, int i)
+		static void FillDeleteriousArray(double InitialProbability, double Increment)
+		{
+			for (int i = 0; i < DeleteriousProbability.GetLength(0); i++)
+			{
+				if (i == 0)
+				{
+					DeleteriousProbability[i] = InitialProbability;
+				}
+				else
+				{
+					if (DeleteriousProbability[i - 1] + Increment <= (1 - BeneficialProbability))
+					{
+						DeleteriousProbability[i] = DeleteriousProbability[i - 1] + Increment;
+					}
+					else
+					{
+						DeleteriousProbability[i] = DeleteriousProbability[i - 1];
+					}
+				}
+			}
+		}
+
+		static void RunPatients(int[,,] Matrix, Random rndx)
+		{
+			// Main Loop to create more particles on the next Cycles from the Cycle Zero (lines values).
+			// Each matrix position will bring a value. This value will be mutiplied by its own class number (column value). 
+			for (int p = 0; p < Patient; p++)
+			{
+				for (int i = 0; i < Cycle; i++)
+				{
+					for (int j = 0; j < Class; j++)
+					{
+						if (i > 0)
+						{
+							// Multiplies the number os particles from de previous Cycle by the Class number which belongs.
+							// This is the progeny composition.
+							Matrix[p, i, j] = Matrix[p, (i - 1), j] * j;
+						}
+					}
+
+					CutOffMaxParticlesPerCycle(Matrix, p, i, rndx);
+					ApplyMutationsProbabilities(Matrix, p, i);
+
+					if (i == InfectionCycle[p] && p < (Matrix.GetLength(0) - 1))
+					{
+						//Console.WriteLine(Matrix.GetLength(0));
+						PickRandomParticlesForInfection(Matrix, p, i, rndx);
+						Console.WriteLine("*** INFECTION CYCLE *** {0}", i);
+					}
+
+					// print which Cycle was finished just to give user feedback, because it may take too long to run.
+					Console.WriteLine("Cycles processed: {0}", i);
+				}
+				Console.WriteLine("Patients processed: {0}", p + 1);
+			}
+		}
+
+		static void ApplyMutationsProbabilities(int[,,] Matrix, int p, int i)
 		{
 			// This function will apply three probabilities: Deleterious, Beneficial or Neutral.
 			// Their roles is to simulate real mutations of virus genome.
@@ -120,14 +190,14 @@ namespace multi_dimensional_array
 			// Não precisamos definir a mutação neutra, pois no código de comparação, o número sorteado deverá ser maior que 0,905 (deletéria + benéfica) 
 
 			// Here the probabilities numbers for each mutation is defined.
-			double DeleteriousProbability = 0.9;
-			double BeneficialProbability = 0.005;
+			//double DeleteriousProbability = 0.6;
+			//double BeneficialProbability = 0.005;
 
 			int[] ThisCycle = new int[Class];
 
 			for (int j = 0; j < Class; j++)
 			{
-				ThisCycle[j] = Matrix[i, j];
+				ThisCycle[j] = Matrix[p, i, j];
 			}
 
 			for (int j = 0; j < Class; j++)
@@ -143,26 +213,26 @@ namespace multi_dimensional_array
 						// decrease one Class number. Remember this function is inside a loop for each i and each j values.
 						// So this loop will run through the whole Matrix, particle by particle on its own positions. 
 
-						if (RandomNumber < DeleteriousProbability)
+						if (RandomNumber < DeleteriousProbability[p])
 						// Deleterious Mutation = 90,0% probability (0.9)
 						{
-							Matrix[i, (j - 1)] = Matrix[i, (j - 1)] + 1;
-							Matrix[i, j] = Matrix[i, j] - 1;
+							Matrix[p, i, (j - 1)] = Matrix[p, i, (j - 1)] + 1;
+							Matrix[p, i, j] = Matrix[p, i, j] - 1;
 
 							DownParticles++;
 						}
 
-						else if (RandomNumber < (DeleteriousProbability + BeneficialProbability))
+						else if (RandomNumber < (DeleteriousProbability[p] + BeneficialProbability))
 						// Beneficial Mutation = 0,5% probability (0.005)
 						{
 							if (j < (Class - 1))
 							{
-								Matrix[i, (j + 1)] = Matrix[i, (j + 1)] + 1;
-								Matrix[i, j] = Matrix[i, j] - 1;
+								Matrix[p, i, (j + 1)] = Matrix[p, i, (j + 1)] + 1;
+								Matrix[p, i, j] = Matrix[p, i, j] - 1;
 							}
 							if (j == Class)
 							{
-								Matrix[i, j] = Matrix[i, j] + 1;
+								Matrix[p, i, j] = Matrix[p, i, j] + 1;
 							}
 
 							UpParticles++;
@@ -171,8 +241,8 @@ namespace multi_dimensional_array
 				}
 			}
 
-			ClassUpParticles[i] = UpParticles;
-			ClassDownParticles[i] = DownParticles;
+			ClassUpParticles[p, i] = UpParticles;
+			ClassDownParticles[p, i] = DownParticles;
 
 			// PSEUDOCODIGO (para melhor compreensão no desenvolvimento):
 
@@ -199,7 +269,7 @@ namespace multi_dimensional_array
 			// número de partículas da classe (R + 1) recebe uma partícula
 		}
 
-		static int ParticlesInCycle(int[,] Matrix, int i)
+		static int ParticlesInCycle(int[,,] Matrix, int p, int i)
 		{
 			// This funtion brings the sum value of particles by Cycle. 
 
@@ -207,7 +277,7 @@ namespace multi_dimensional_array
 
 			for (int j = 0; j < Class; j++)
 			{
-				Particles = Particles + Matrix[i, j];
+				Particles = Particles + Matrix[p, i, j];
 			}
 			return Particles;
 		}
@@ -242,12 +312,11 @@ namespace multi_dimensional_array
 
 		// Assim vai até a SomaLinha chegar no MaxParticles determinado.
 
-		static void CutOffMaxParticlesPerCycle(int[,] Matrix, int i, Random rndx)
-		{
-			int MaxParticles = 1000000;                                // Limite máximo de partículas que quero impor para cada ciclo (linha)
-			int ParticlesInThisCycle = ParticlesInCycle(Matrix, i);    // Quantidade de partículas somadas por ciclo (linha)
+		static void CutOffMaxParticlesPerCycle(int[,,] Matrix, int p, int i, Random rndx)
+		{								
+			int ParticlesInThisCycle = ParticlesInCycle(Matrix, p, i);	// Quantidade de partículas somadas por ciclo (linha)
 
-			int[] StatusR = new int[Class];                            // Declarando o array que é a lista abaixo
+			int[] StatusR = new int[Class];                             // Declarando o array que é a lista abaixo
 
 			// Se, x = ParticlesInCycle, for maior do que o núm MaxParticles definido, então...
 			if (ParticlesInThisCycle > MaxParticles)
@@ -256,82 +325,276 @@ namespace multi_dimensional_array
 				// sendo x, ou seja, esta soma, maior do que o limite MaxParticles definido;
 				// então, diminua em uma unidade a soma das partículas por ciclo até que atinja o limite MaxParticles definido.
 
-				for (int Particles = ParticlesInCycle(Matrix, i); Particles > MaxParticles; Particles--)
+				for (int Particles = ParticlesInCycle(Matrix, p, i); Particles > MaxParticles; Particles--)
 				// PARTICLES is equal to PARTICLESINTHISCYCLE, but we don't want to modifify PARTICLESINTHISCYCLE while the for loop is running
 				// also, PARTICLESINTHISCYCLE was created outside the for loop, for other purpose
 				{
-
-
-					StatusR[0] = Matrix[i, 0];
-					StatusR[1] = Matrix[i, 0] + Matrix[i, 1];
-					StatusR[2] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2];
-					StatusR[3] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3];
-					StatusR[4] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4];
-					StatusR[5] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5];
-					StatusR[6] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6];
-					StatusR[7] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7];
-					StatusR[8] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8];
-					StatusR[9] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8] + Matrix[i, 9];
-					StatusR[10] = Matrix[i, 0] + Matrix[i, 1] + Matrix[i, 2] + Matrix[i, 3] + Matrix[i, 4] + Matrix[i, 5] + Matrix[i, 6] + Matrix[i, 7] + Matrix[i, 8] + Matrix[i, 9] + Matrix[i, 10];
-
+					StatusR[0] = Matrix[p, i, 0];
+					StatusR[1] = Matrix[p, i, 0] + Matrix[p, i, 1];
+					StatusR[2] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2];
+					StatusR[3] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3];
+					StatusR[4] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4];
+					StatusR[5] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5];
+					StatusR[6] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6];
+					StatusR[7] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7];
+					StatusR[8] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8];
+					StatusR[9] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8] + Matrix[p, i, 9];
+					StatusR[10] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8] + Matrix[p, i, 9] + Matrix[p, i, 10];
 
 					// Gero um número aleatório de 0 ao limite do valor de soma de partículas por ciclo (linha) = ParticlesInCycle
 					// int RandomMaxParticles;
-					int rndParticle = rndx.Next(1, ParticlesInCycle(Matrix, i));
+					int rndParticle = rndx.Next(1, ParticlesInCycle(Matrix, p, i));
 
 					// Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
 					// ParticlesInCycle atinja o limite estipulado por MaxParticles 
 					if (rndParticle > 0 && rndParticle <= StatusR[0])
 					{
-						Matrix[i, 0] = Matrix[i, 0] - 1;
+						Matrix[p, i, 0] = Matrix[p, i, 0] - 1;
 					}
 
 					if (rndParticle > StatusR[0] && rndParticle <= StatusR[1])
 					{
-						Matrix[i, 1] = Matrix[i, 1] - 1;
+						Matrix[p, i, 1] = Matrix[p, i, 1] - 1;
 					}
 
 					if (rndParticle > StatusR[1] && rndParticle <= StatusR[2])
 					{
-						Matrix[i, 2] = Matrix[i, 2] - 1;
+						Matrix[p, i, 2] = Matrix[p, i, 2] - 1;
 					}
 					if (rndParticle > StatusR[2] && rndParticle <= StatusR[3])
 					{
-						Matrix[i, 3] = Matrix[i, 3] - 1;
+						Matrix[p, i, 3] = Matrix[p, i, 3] - 1;
 					}
 					if (rndParticle > StatusR[3] && rndParticle <= StatusR[4])
 					{
-						Matrix[i, 4] = Matrix[i, 4] - 1;
+						Matrix[p, i, 4] = Matrix[p, i, 4] - 1;
 					}
 					if (rndParticle > StatusR[4] && rndParticle <= StatusR[5])
 					{
-						Matrix[i, 5] = Matrix[i, 5] - 1;
+						Matrix[p, i, 5] = Matrix[p, i, 5] - 1;
 					}
 					if (rndParticle > StatusR[5] && rndParticle <= StatusR[6])
 					{
-						Matrix[i, 6] = Matrix[i, 6] - 1;
+						Matrix[p, i, 6] = Matrix[p, i, 6] - 1;
 					}
 					if (rndParticle > StatusR[6] && rndParticle <= StatusR[7])
 					{
-						Matrix[i, 7] = Matrix[i, 7] - 1;
+						Matrix[p, i, 7] = Matrix[p, i, 7] - 1;
 					}
 					if (rndParticle > StatusR[7] && rndParticle <= StatusR[8])
 					{
-						Matrix[i, 8] = Matrix[i, 8] - 1;
+						Matrix[p, i, 8] = Matrix[p, i, 8] - 1;
 					}
 					if (rndParticle > StatusR[8] && rndParticle <= StatusR[9])
 					{
-						Matrix[i, 9] = Matrix[i, 9] - 1;
+						Matrix[p, i, 9] = Matrix[p, i, 9] - 1;
 					}
 					if (rndParticle > StatusR[9] && rndParticle <= StatusR[10])
 					{
-						Matrix[i, 10] = Matrix[i, 10] - 1;
+						Matrix[p, i, 10] = Matrix[p, i, 10] - 1;
 					}
 				}
 			}
 		}
 
-		static void PrintOutput(int[,] Matrix)
+		static void PickRandomParticlesForInfection(int[,,] Matrix, int p, int i, Random rndx)
+		{
+			int InfectionParticles = 20;
+			//int ParticlesSelected = 0;
+
+			int ParticlesInThisCycle = ParticlesInCycle(Matrix, p, i);  // Quantidade de partículas somadas por ciclo (linha)
+
+			int[] StatusR = new int[Class]; // TODO melhorar o nome deste array
+
+			// TODO o FOR LOOP abaixo não utiliza todas as partículas disponíveis no ciclo
+			// Em outras palavras, sobram partículas mesmo o ciclo tendo menos partículas do que INFECTIONPARTICLES
+
+			//while (ParticlesSelected < InfectionParticles)
+			//{
+			//	StatusR[0] = Matrix[p, i, 0];
+			//	StatusR[1] = Matrix[p, i, 0] + Matrix[p, i, 1];
+			//	StatusR[2] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2];
+			//	StatusR[3] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3];
+			//	StatusR[4] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4];
+			//	StatusR[5] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5];
+			//	StatusR[6] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6];
+			//	StatusR[7] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7];
+			//	StatusR[8] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8];
+			//	StatusR[9] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8] + Matrix[p, i, 9];
+			//	StatusR[10] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8] + Matrix[p, i, 9] + Matrix[p, i, 10];
+
+			//	// Gero um número aleatório de 0 ao limite do valor de soma de partículas por ciclo (linha) = ParticlesInCycle
+			//	// int RandomMaxParticles;
+			//	if (ParticlesInThisCycle > 0)
+			//	{
+			//		int rndParticle = rndx.Next(1, ParticlesInThisCycle);
+
+			//		// Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
+			//		// ParticlesInCycle atinja o limite estipulado por MaxParticles 
+			//		if (rndParticle > 0 && rndParticle <= StatusR[0])
+			//		{
+			//			Matrix[(p + 1), 0, 0] += 1;
+			//			Matrix[p, i, 0] -= 1;
+			//			ParticlesSelected++;
+			//		}
+
+			//		if (rndParticle > StatusR[0] && rndParticle <= StatusR[1])
+			//		{
+			//			Matrix[(p + 1), 0, 1] += 1;
+			//			Matrix[p, i, 1] -= 1;
+			//			ParticlesSelected++;
+			//		}
+
+			//		if (rndParticle > StatusR[1] && rndParticle <= StatusR[2])
+			//		{
+			//			Matrix[(p + 1), 0, 2] += 1;
+			//			Matrix[p, i, 2] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[2] && rndParticle <= StatusR[3])
+			//		{
+			//			Matrix[(p + 1), 0, 3] += 1;
+			//			Matrix[p, i, 3] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[3] && rndParticle <= StatusR[4])
+			//		{
+			//			Matrix[(p + 1), 0, 4] += 1;
+			//			Matrix[p, i, 4] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[4] && rndParticle <= StatusR[5])
+			//		{
+			//			Matrix[(p + 1), 0, 5] += 1;
+			//			Matrix[p, i, 5] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[5] && rndParticle <= StatusR[6])
+			//		{
+			//			Matrix[(p + 1), 0, 6] += 1;
+			//			Matrix[p, i, 6] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[6] && rndParticle <= StatusR[7])
+			//		{
+			//			Matrix[(p + 1), 0, 7] += 1;
+			//			Matrix[p, i, 7] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[7] && rndParticle <= StatusR[8])
+			//		{
+			//			Matrix[(p + 1), 0, 8] += 1;
+			//			Matrix[p, i, 8] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[8] && rndParticle <= StatusR[9])
+			//		{
+			//			Matrix[(p + 1), 0, 9] += 1;
+			//			Matrix[p, i, 9] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//		if (rndParticle > StatusR[9] && rndParticle <= StatusR[10])
+			//		{
+			//			Matrix[(p + 1), 0, 10] += 1;
+			//			Matrix[p, i, 10] -= 1;
+			//			ParticlesSelected++;
+			//		}
+			//	}
+			//	else
+			//	{
+			//		Console.WriteLine("Patient {0} Cicle {1} has no particles. FOR LOOP iteration number {2}\t\t", p, i, ParticlesSelected);
+			//		ParticlesSelected++;
+			//	}
+			//}
+
+			for (int ParticlesSelected = 0; ParticlesSelected < InfectionParticles; ParticlesSelected++)
+			{
+				StatusR[0] = Matrix[p, i, 0];
+				StatusR[1] = Matrix[p, i, 0] + Matrix[p, i, 1];
+				StatusR[2] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2];
+				StatusR[3] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3];
+				StatusR[4] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4];
+				StatusR[5] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5];
+				StatusR[6] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6];
+				StatusR[7] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7];
+				StatusR[8] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8];
+				StatusR[9] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8] + Matrix[p, i, 9];
+				StatusR[10] = Matrix[p, i, 0] + Matrix[p, i, 1] + Matrix[p, i, 2] + Matrix[p, i, 3] + Matrix[p, i, 4] + Matrix[p, i, 5] + Matrix[p, i, 6] + Matrix[p, i, 7] + Matrix[p, i, 8] + Matrix[p, i, 9] + Matrix[p, i, 10];
+
+				// Gero um número aleatório de 0 ao limite do valor de soma de partículas por ciclo (linha) = ParticlesInCycle
+				// int RandomMaxParticles;
+				if (ParticlesInThisCycle > 0)
+				{
+					int rndParticle = rndx.Next(1, ParticlesInThisCycle);
+
+					// Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
+					// ParticlesInCycle atinja o limite estipulado por MaxParticles 
+					if (rndParticle > 0 && rndParticle <= StatusR[0])
+					{
+						Matrix[(p + 1), 0, 0] += 1;
+						Matrix[p, i, 0] -= 1;
+					}
+
+					if (rndParticle > StatusR[0] && rndParticle <= StatusR[1])
+					{
+						Matrix[(p + 1), 0, 1] += 1;
+						Matrix[p, i, 1] -= 1;
+					}
+
+					if (rndParticle > StatusR[1] && rndParticle <= StatusR[2])
+					{
+						Matrix[(p + 1), 0, 2] += 1;
+						Matrix[p, i, 2] -= 1;
+					}
+					if (rndParticle > StatusR[2] && rndParticle <= StatusR[3])
+					{
+						Matrix[(p + 1), 0, 3] += 1;
+						Matrix[p, i, 3] -= 1;
+					}
+					if (rndParticle > StatusR[3] && rndParticle <= StatusR[4])
+					{
+						Matrix[(p + 1), 0, 4] += 1;
+						Matrix[p, i, 4] -= 1;
+					}
+					if (rndParticle > StatusR[4] && rndParticle <= StatusR[5])
+					{
+						Matrix[(p + 1), 0, 5] += 1;
+						Matrix[p, i, 5] -= 1;
+					}
+					if (rndParticle > StatusR[5] && rndParticle <= StatusR[6])
+					{
+						Matrix[(p + 1), 0, 6] += 1;
+						Matrix[p, i, 6] -= 1;
+					}
+					if (rndParticle > StatusR[6] && rndParticle <= StatusR[7])
+					{
+						Matrix[(p + 1), 0, 7] += 1;
+						Matrix[p, i, 7] -= 1;
+					}
+					if (rndParticle > StatusR[7] && rndParticle <= StatusR[8])
+					{
+						Matrix[(p + 1), 0, 8] += 1;
+						Matrix[p, i, 8] -= 1;
+					}
+					if (rndParticle > StatusR[8] && rndParticle <= StatusR[9])
+					{
+						Matrix[(p + 1), 0, 9] += 1;
+						Matrix[p, i, 9] -= 1;
+					}
+					if (rndParticle > StatusR[9] && rndParticle <= StatusR[10])
+					{
+						Matrix[(p + 1), 0, 10] += 1;
+						Matrix[p, i, 10] -= 1;
+					}
+				}
+				else
+				{
+					Console.WriteLine("Patient {0} Cicle {1} has no particles. FOR LOOP iteration number {2}\t\t", p, i, ParticlesSelected);
+				}
+			}
+		}
+
+		static void PrintOutput(int[,,] Matrix)
 		{
 			double PercentageOfParticlesUp = 0.0;
 			double PercentageOfParticlesDown = 0.0;
@@ -347,28 +610,33 @@ namespace multi_dimensional_array
 				writer.Write("\t\tSoma\tR0\tR1\tR2\tR3\tR4\tR5\tR6\tR7\tR8\t\tR9\t\tR10\n\n");
 				writer.WriteLine("\n");
 
-				// Outer loop for accessing rows
-				for (int i = 0; i < Cycle; i++)
+				for (int p = 0; p < Patient; p++)
 				{
-					Console.Write("Pac.{0} Cic.{1}\t\t", Patient, i);
-					writer.Write("Pac.{0} Cic.{1} {2}\t\t", Patient, i, ParticlesInCycle(Matrix, i));
-
-					// Inner or nested loop for accessing column of each row
-					for (int j = 0; j < Class; j++)
+					for (int i = 0; i < Cycle; i++)
 					{
-						Console.Write("{0}\t", Matrix[i, j]);
-						writer.Write("{0}\t", Matrix[i, j]);
+						Console.Write("Pac.{0} Cic.{1}\t\t", p, i);
+						writer.Write("Pac.{0} Cic.{1} {2}\t\t", p, i, ParticlesInCycle(Matrix, p, i));
+
+						for (int j = 0; j < Class; j++)
+						{
+							Console.Write("{0}\t", Matrix[p, i, j]);
+							writer.Write("{0}\t", Matrix[p, i, j]);
+						}
+
+						PercentageOfParticlesUp = (Convert.ToDouble(ClassUpParticles[p, i]) / Convert.ToDouble(ParticlesInCycle(Matrix, p, i))) * 100;
+						PercentageOfParticlesDown = (Convert.ToDouble(ClassDownParticles[p, i]) / Convert.ToDouble(ParticlesInCycle(Matrix, p, i))) * 100;
+
+						Console.WriteLine("\nSoma do ciclo {0}: {1}", i, ParticlesInCycle(Matrix, p, i));
+						Console.WriteLine("Particles Up: {0}, {1} %", ClassUpParticles[p, i], PercentageOfParticlesUp);
+						Console.WriteLine("Particles Down: {0}, {1} %", ClassDownParticles[p, i], PercentageOfParticlesDown);
+						Console.Write("\n");
+
+						writer.WriteLine("\n");
 					}
 
-					PercentageOfParticlesUp = (Convert.ToDouble(ClassUpParticles[i]) / Convert.ToDouble(ParticlesInCycle(Matrix, i)))*100;
-					PercentageOfParticlesDown = (Convert.ToDouble(ClassDownParticles[i]) / Convert.ToDouble(ParticlesInCycle(Matrix, i))) * 100;
-
-					Console.WriteLine("\nSoma do ciclo {0}: {1}", i, ParticlesInCycle(Matrix, i));
-					Console.WriteLine("Particles Up: {0}, {1} %", ClassUpParticles[i], PercentageOfParticlesUp);
-					Console.WriteLine("Particles Down: {0}, {1} %", ClassDownParticles[i], PercentageOfParticlesDown);
+					Console.WriteLine("***************************************************************************************************************");
 					Console.Write("\n");
-
-					writer.WriteLine("\n");
+					Console.Write("\n");
 				}
 			}
 		}
