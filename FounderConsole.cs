@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;				
-using System.Diagnostics;       
-using System.Threading;        
+using System.IO;
+using System.Diagnostics;
+using System.Threading;
 
 // TODO opção de definir probabilidade da mutação deletéria em cada infecção, de acordo com o ciclo determinado (trabalhar com intervalos)
 // esta probabilidade estará sempre atrelada ao ciclo de infecção
@@ -19,7 +19,7 @@ using System.Threading;
 
 namespace multi_dimensional_array
 {
-	public class ProgramMarcos
+	public class ProgramMarcos3D
 	{
 		// Number of Cycles
 		public const int Cycle = 10;
@@ -28,20 +28,22 @@ namespace multi_dimensional_array
 		public const int Class = 11;
 
 		// Number of Patients
-		public const int Patient = 10;
+		public const int Patient = 5;
 
 		static int[] InfectionCycle = new int[Patient];
 
 		//static int[,,] ParticlesThatInfected = new int[Patient, Cycle, Class];
-		
+
 		// The "InitialParticles" is the initial amount of viral particles, that is: the initial virus population of a infection.
 		public const int InitialParticles = 5;
 
 		public const int MaxParticles = 1000000; // Limite máximo de partículas que quero impor para cada ciclo (linha)
 
 		//public const double DeleteriousProbability = 0.9;
-		static double[] DeleteriousProbability = new double[Patient];
+		static double[] DeleteriousProbability = new double[Cycle];
 		public const double BeneficialProbability = 0.005;
+		public const bool DeleteriousIncrement = false; // if true, deleterious probability will increase by INCREMENT each cycle
+		// if false, it will change from a fixed value to another fixed value, at the chosen cycle
 
 		// NOT USED YET
 		//public const int BottleneckParticles = 10;
@@ -59,12 +61,21 @@ namespace multi_dimensional_array
 			stopWatch.Start();
 			//Thread.Sleep(10000);
 
-			FillInfectionCycleArray(2, 1); // FIRST PARAMETER: initial cycle, SECOND PARAMENTER: increment
-			FillDeleteriousArray(0.3, 0.0); // FIRST PARAMETER: initial probability, SECOND PARAMENTER: increment
+			FillInfectionCycleArray(5, 0); // FIRST PARAMETER: initial cycle, SECOND PARAMENTER: increment
+
+			if (DeleteriousIncrement)
+			{
+				FillDeleteriousArrayWithIncrement(0.3, 0.1); // FIRST PARAMETER: initial probability, SECOND PARAMENTER: increment
+			}
+			else
+			{
+				FillDeleteriousArray(0.3, 0.8, 5); // FIRST PARAMETER: first probability, SECOND PARAMENTER: second probability
+				// THIRD PARAMETER: cycle to change from first probability to second probability
+			}
 
 			// Declaring the three-dimensional Matrix: it has p Patient, x lines of Cycles and y columns of Classes, defined by the variables above. 
 			int[,,] Matrix = new int[Patient, Cycle, Class];
-			
+
 			// The Matrix starts on the Patient 0, 10th position (column) on the line zero. 
 			// The "InitialParticles" is the amount of viral particles that exists in the class 10 on the cycle zero.
 			// That is: these 5 particles have the potential to create 10 particles each.
@@ -87,15 +98,15 @@ namespace multi_dimensional_array
 
 		static void FillInfectionCycleArray(int InitialCycle, int Increment)
 		{
-			for(int i = 0; i < InfectionCycle.GetLength(0); i++)
+			for (int i = 0; i < InfectionCycle.GetLength(0); i++)
 			{
-				if(i == 0)
+				if (i == 0)
 				{
 					InfectionCycle[i] = InitialCycle;
 				}
 				else
 				{
-					if(InfectionCycle[i - 1] + Increment < Cycle)
+					if (InfectionCycle[i - 1] + Increment < Cycle)
 					{
 						InfectionCycle[i] = InfectionCycle[i - 1] + Increment;
 					}
@@ -107,7 +118,22 @@ namespace multi_dimensional_array
 			}
 		}
 
-		static void FillDeleteriousArray(double InitialProbability, double Increment)
+		static void FillDeleteriousArray(double FirstProbability, double SecondProbability, int ChangeCycle)
+		{
+			for (int i = 0; i < DeleteriousProbability.GetLength(0); i++)
+			{
+				if (i <= ChangeCycle)
+				{
+					DeleteriousProbability[i] = FirstProbability;
+				}
+				else
+				{
+					DeleteriousProbability[i] = SecondProbability;
+				}
+			}
+		}
+
+		static void FillDeleteriousArrayWithIncrement(double InitialProbability, double Increment)
 		{
 			for (int i = 0; i < DeleteriousProbability.GetLength(0); i++)
 			{
@@ -213,7 +239,7 @@ namespace multi_dimensional_array
 						// decrease one Class number. Remember this function is inside a loop for each i and each j values.
 						// So this loop will run through the whole Matrix, particle by particle on its own positions. 
 
-						if (RandomNumber < DeleteriousProbability[p])
+						if (RandomNumber < DeleteriousProbability[i])
 						// Deleterious Mutation = 90,0% probability (0.9)
 						{
 							Matrix[p, i, (j - 1)] = Matrix[p, i, (j - 1)] + 1;
@@ -222,7 +248,7 @@ namespace multi_dimensional_array
 							DownParticles++;
 						}
 
-						else if (RandomNumber < (DeleteriousProbability[p] + BeneficialProbability))
+						else if (RandomNumber < (DeleteriousProbability[i] + BeneficialProbability))
 						// Beneficial Mutation = 0,5% probability (0.005)
 						{
 							if (j < (Class - 1))
@@ -313,8 +339,8 @@ namespace multi_dimensional_array
 		// Assim vai até a SomaLinha chegar no MaxParticles determinado.
 
 		static void CutOffMaxParticlesPerCycle(int[,,] Matrix, int p, int i, Random rndx)
-		{								
-			int ParticlesInThisCycle = ParticlesInCycle(Matrix, p, i);	// Quantidade de partículas somadas por ciclo (linha)
+		{
+			int ParticlesInThisCycle = ParticlesInCycle(Matrix, p, i);  // Quantidade de partículas somadas por ciclo (linha)
 
 			int[] StatusR = new int[Class];                             // Declarando o array que é a lista abaixo
 
