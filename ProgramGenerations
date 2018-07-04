@@ -255,7 +255,7 @@ namespace Founder_Console_MarcosPC
 						// print which Cycle was finished just to give user feedback, because it may take too long to run.
 						Console.WriteLine("Cycles processed: {0}", i);
 					}
-					Console.WriteLine("Patients processed: GEN {0} - {1}", g, p + 1);
+					Console.WriteLine("Patients processed: GEN {0} - P {1}", g, p);
 				}
 			}
 		}
@@ -429,6 +429,10 @@ namespace Founder_Console_MarcosPC
 			int InfectionParticles = 20;
 			//int ParticlesSelected = 0;
 
+			// array to store the particles that will infect patients of the next generation
+			// it is just a 1D array (a list) where each index is a class
+			int[] InfectedParticles = new int[Classes];
+
 			int ParticlesInThisCycle = ParticlesInCycle(Matrix, g, p, i);  // Quantidade de partículas somadas por ciclo (linha)
 
 			int[] StatusR = new int[Classes]; // TODO melhorar o nome deste array
@@ -457,65 +461,109 @@ namespace Founder_Console_MarcosPC
 					// ParticlesSelected atinja o limite estipulado por InfectioParticles 
 					if (rndParticle > 0 && rndParticle <= StatusR[0])
 					{
-						Matrix[g][(p + 1), 0, 0] += 1;
+						InfectedParticles[0] += 1;
 						Matrix[g][p, i, 0] -= 1;
 					}
 
 					if (rndParticle > StatusR[0] && rndParticle <= StatusR[1])
 					{
-						Matrix[g][(p + 1), 0, 1] += 1;
+						InfectedParticles[1] += 1;
 						Matrix[g][p, i, 1] -= 1;
 					}
 
 					if (rndParticle > StatusR[1] && rndParticle <= StatusR[2])
 					{
-						Matrix[g][(p + 1), 0, 2] += 1;
+						InfectedParticles[2] += 1;
 						Matrix[g][p, i, 2] -= 1;
 					}
 					if (rndParticle > StatusR[2] && rndParticle <= StatusR[3])
 					{
-						Matrix[g][(p + 1), 0, 3] += 1;
+						InfectedParticles[3] += 1;
 						Matrix[g][p, i, 3] -= 1;
 					}
 					if (rndParticle > StatusR[3] && rndParticle <= StatusR[4])
 					{
-						Matrix[g][(p + 1), 0, 4] += 1;
+						InfectedParticles[4] += 1;
 						Matrix[g][p, i, 4] -= 1;
 					}
 					if (rndParticle > StatusR[4] && rndParticle <= StatusR[5])
 					{
-						Matrix[g][(p + 1), 0, 5] += 1;
+						InfectedParticles[5] += 1;
 						Matrix[g][p, i, 5] -= 1;
 					}
 					if (rndParticle > StatusR[5] && rndParticle <= StatusR[6])
 					{
-						Matrix[g][(p + 1), 0, 6] += 1;
+						InfectedParticles[6] += 1;
 						Matrix[g][p, i, 6] -= 1;
 					}
 					if (rndParticle > StatusR[6] && rndParticle <= StatusR[7])
 					{
-						Matrix[g][(p + 1), 0, 7] += 1;
+						InfectedParticles[7] += 1;
 						Matrix[g][p, i, 7] -= 1;
 					}
 					if (rndParticle > StatusR[7] && rndParticle <= StatusR[8])
 					{
-						Matrix[g][(p + 1), 0, 8] += 1;
+						InfectedParticles[8] += 1;
 						Matrix[g][p, i, 8] -= 1;
 					}
 					if (rndParticle > StatusR[8] && rndParticle <= StatusR[9])
 					{
-						Matrix[g][(p + 1), 0, 9] += 1;
+						InfectedParticles[9] += 1;
 						Matrix[g][p, i, 9] -= 1;
 					}
 					if (rndParticle > StatusR[9] && rndParticle <= StatusR[10])
 					{
-						Matrix[g][(p + 1), 0, 10] += 1;
+						InfectedParticles[10] += 1;
 						Matrix[g][p, i, 10] -= 1;
 					}
 				}
 				else
 				{
 					Console.WriteLine("Patient {0} Cycle {1} has no particles. FOR LOOP iteration number {2}\t\t", p, i, ParticlesSelected);
+				}
+			}
+
+			//for (int n = 0; n < Classes; n++)
+			//{
+			//	Console.WriteLine(InfectedParticles[n]);
+			//}
+
+			if(g < Generations - 1) // if it is the last generation (g == Generations - 1), there is no infection
+			{
+				InfectPatients(Matrix, InfectedParticles, InfectionParticles, g, p, rndx);
+			}
+		}
+
+		static void InfectPatients(int[][,,] Matrix, int[] InfectedParticles, int InfectionParticles, int g, int p, Random rndx)
+		{
+			int InfectionParticlesPerPatient = InfectionParticles/Gen1Patients;
+
+			int[] ParticlesReceived = new int[(p + 1) * Gen1Patients];
+
+			// each patient will infect a group of patients of size Gen1Patients
+			int LastPatient = ((p + 1) * Gen1Patients) - 1; // the last patient of this group
+			int FirstPatient = LastPatient - (Gen1Patients - 1); // the first patient of this group
+			
+			Console.WriteLine(FirstPatient);
+			Console.WriteLine(LastPatient);
+
+			while (InfectionParticles > 0)
+			{
+				int rndClass = rndx.Next(0, Classes);
+
+				if (InfectedParticles[rndClass] > 0) // there is at least one particle in the class selected
+				{
+					int rndPatient = rndx.Next(FirstPatient, LastPatient + 1); // the Random function includes the minVal and excludes the maxVal
+
+					if (ParticlesReceived[rndPatient] < InfectionParticlesPerPatient) // selected patient have not received max amount of particles yet
+					{
+						Matrix[g + 1][rndPatient, 0, rndClass] += 1;
+						ParticlesReceived[rndPatient] += 1;
+						InfectedParticles[rndClass] -= 1;
+						InfectionParticles--;
+
+						Console.WriteLine("G {0} - P {1}, particles: {2}", g + 1, rndPatient, ParticlesReceived[rndPatient]);
+					}
 				}
 			}
 		}
