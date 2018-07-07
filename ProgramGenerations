@@ -24,10 +24,16 @@ namespace Founder_Console_MarcosPC
 		// Number of Generations
 		// Generation 0 always have only 1 patient
 		// Generations 1 and forward have the number of patients defined in the PATIENTS variable
-		public const int Generations = 4;
+		public const int Generations = 20;
+
+		// this array is called inside the RunPatients function
+		// it is an array because if there is increment from the infection cycle from one patient to another,
+		// different values for infection cycle have to be stored
+		//static int[][] InfectionCycle = new int[Generations][];
+		static int[] InfectionCycle = new int[] { 2, 4 };
 
 		// Number of Patients in Generation 1
-		public const int Gen1Patients = 4;
+		public static int Gen1Patients;
 
 		// Number of Cycles
 		public const int Cycles = 10;
@@ -37,6 +43,8 @@ namespace Founder_Console_MarcosPC
 
 		// The "InitialParticles" is the initial amount of viral particles, that is: the initial virus population of a infection.
 		public const int InitialParticles = 5;
+
+		public const int InfectionParticles = 20;
 
 		public const int MaxParticles = 1000000; // Limite máximo de partículas que quero impor para cada ciclo (linha)
 
@@ -48,18 +56,17 @@ namespace Founder_Console_MarcosPC
 		public const bool DeleteriousIncrement = false; // if true, deleterious probability will increase by INCREMENT each cycle
 														// if false, it will change from a fixed value to another fixed value, at the chosen cycle
 
-		// this array is called inside the RunPatients function
-		// it is an array because if there is increment from the infection cycle from one patient to another,
-		// different values for infection cycle have to be stored
-		static int[][] InfectionCycle = new int[Generations][];
-
 		// Lists to keep the number of particles that go up or down the classes, during mutations
 		static int[][,] ClassUpParticles = new int[Generations][,];
 		static int[][,] ClassDownParticles = new int[Generations][,];
 
-		static void Main(string[] args)
+		static void MainFunction(string[] args)
 		{
 			Random rnd = new Random();
+
+			//Console.WriteLine(InfectionCycle.GetLength(0));
+
+			Gen1Patients = InfectionCycle.GetLength(0);
 
 			// create and start the Stopwatch Class. From: https://msdn.microsoft.com/en-us/library/system.diagnostics.stopwatch
 			Stopwatch stopWatch = new Stopwatch();
@@ -73,12 +80,12 @@ namespace Founder_Console_MarcosPC
 			for(int g = 0; g < Generations; g++)
 			{
 				Matrix[g] = new int[(int)Math.Pow(Gen1Patients, g), Cycles, Classes];
-				InfectionCycle[g] = new int[(int)Math.Pow(Gen1Patients, g)];
+				//InfectionCycle[g] = new int[(int)Math.Pow(Gen1Patients, g)];
 				ClassUpParticles[g] = new int[(int)Math.Pow(Gen1Patients, g), Cycles];
 				ClassDownParticles[g] = new int[(int)Math.Pow(Gen1Patients, g), Cycles];
 			}
 
-			FillInfectionCycleArray(6, 0); // FIRST PARAMETER: initial cycle, SECOND PARAMENTER: increment
+			//FillInfectionCycleArray(6, 0); // FIRST PARAMETER: initial cycle, SECOND PARAMENTER: increment
 
 			if (DeleteriousIncrement)
 			{
@@ -121,31 +128,31 @@ namespace Founder_Console_MarcosPC
 			Console.ReadKey();
 		}
 
-		static void FillInfectionCycleArray(int InitialCycle, int Increment)
-		{
-			for(int g  = 0; g < Generations; g++)
-			{
-				for (int i = 0; i < InfectionCycle[g].GetLength(0); i++)
-				{
-					if (i == 0)
-					{
-						InfectionCycle[g][i] = InitialCycle;
-					}
-					else
-					{
-						if (InfectionCycle[g][i - 1] + Increment < Cycles)
-						{
-							InfectionCycle[g][i] = InfectionCycle[g][i - 1] + Increment;
-						}
-						else
-						{
-							InfectionCycle[g][i] = InfectionCycle[g][i - 1];
-						}
-					}
-				}
-			}
+		//static void FillInfectionCycleArray(int InitialCycle, int Increment)
+		//{
+		//	for(int g  = 0; g < Generations; g++)
+		//	{
+		//		for (int i = 0; i < InfectionCycle[g].GetLength(0); i++)
+		//		{
+		//			if (i == 0)
+		//			{
+		//				InfectionCycle[g][i] = InitialCycle;
+		//			}
+		//			else
+		//			{
+		//				if (InfectionCycle[g][i - 1] + Increment < Cycles)
+		//				{
+		//					InfectionCycle[g][i] = InfectionCycle[g][i - 1] + Increment;
+		//				}
+		//				else
+		//				{
+		//					InfectionCycle[g][i] = InfectionCycle[g][i - 1];
+		//				}
+		//			}
+		//		}
+		//	}
 			
-		}
+		//}
 
 		static void FillDeleteriousArray(double FirstProbability, double SecondProbability, int ChangeCycle)
 		{
@@ -229,6 +236,8 @@ namespace Founder_Console_MarcosPC
 			{
 				for (int p = 0; p < Matrix[g].GetLength(0); p++)
 				{
+					Console.WriteLine("Patient started: GEN {0} - P {1}", g, p);
+
 					for (int i = 0; i < Cycles; i++)
 					{
 						for (int j = 0; j < Classes; j++)
@@ -245,17 +254,18 @@ namespace Founder_Console_MarcosPC
 						CutOffMaxParticlesPerCycle(Matrix, g, p, i, rndx);
 						ApplyMutationsProbabilities(Matrix, g, p, i);
 
-						if (i == InfectionCycle[g][p] && p < (Matrix.GetLength(0) - 1))
+						// if the INFECTIONCYLE array contains the cycle "i"
+						// and it is not the last generation, make infection
+						if (InfectionCycle.Contains(i) && (g < Generations - 1))
 						{
-							//Console.WriteLine(Matrix.GetLength(0));
 							PickRandomParticlesForInfection(Matrix, g, p, i, rndx);
-							Console.WriteLine("*** INFECTION CYCLE *** {0}", i);
+							//Console.WriteLine("*** INFECTION CYCLE *** {0}", i);
 						}
 
 						// print which Cycle was finished just to give user feedback, because it may take too long to run.
-						Console.WriteLine("Cycles processed: {0}", i);
+						//Console.WriteLine("Cycles processed: {0}", i);
 					}
-					Console.WriteLine("Patients processed: GEN {0} - P {1}", g, p);
+					//Console.WriteLine("Patients processed: GEN {0} - P {1}", g, p);
 				}
 			}
 		}
@@ -426,9 +436,6 @@ namespace Founder_Console_MarcosPC
 
 		static void PickRandomParticlesForInfection(int[][,,] Matrix, int g, int p, int i, Random rndx)
 		{
-			int InfectionParticles = 20;
-			// TODO make this a global variable
-
 			bool NoParticlesForInfection = false;
 
 			// array to store the particles that will infect patients of the next generation
@@ -522,41 +529,44 @@ namespace Founder_Console_MarcosPC
 				else
 				{
 					NoParticlesForInfection = true;
-
-					Console.WriteLine("Patient {0} Cycle {1} has no particles. FOR LOOP iteration number {2}\t\t", p, i, ParticlesSelected);
 				}
 			}
 
-			if (!NoParticlesForInfection && (g < Generations - 1))
-				// if there are no particles for infection, there is no infection
-				// if the current generation is the last generation (g == Generations - 1), there is no infection
+			// if there are no particles for infection, there is no infection
+			if (NoParticlesForInfection)
 			{
-				InfectPatients(Matrix, InfectedParticles, InfectionParticles, g, p, rndx);
+				Console.WriteLine("Patient {0} Cycle {1} has no particles.\t\t", p, i);
+			}
+			else
+			{
+				InfectPatients(Matrix, InfectedParticles, InfectionParticles, g, p, i, rndx);
 			}
 		}
 
-		static void InfectPatients(int[][,,] Matrix, int[] InfectedParticles, int InfectionParticles, int g, int p, Random rndx)
+		static void InfectPatients(int[][,,] Matrix, int[] InfectedParticles, int InfectionParticles, int g, int p, int i, Random rndx)
 		{
 			int AmountOfParticlesAvailable = InfectedParticles[0] + InfectedParticles[1] + InfectedParticles[2] + InfectedParticles[3] +
 						InfectedParticles[4] + InfectedParticles[5] + InfectedParticles[6] + InfectedParticles[7] +
 						InfectedParticles[8] + InfectedParticles[9] + InfectedParticles[10];
 
-			Console.WriteLine(AmountOfParticlesAvailable);
+			//Console.WriteLine(AmountOfParticlesAvailable);
 
-			// max amount of particles that each infected patient will receive
-			// the actual amount of particles may vary, because the AMOUNTOFPARTICLESAVAILABLE may be less than INFECTIONPARTICLES
-			int InfectionParticlesPerPatient = InfectionParticles / Gen1Patients;
-
-			Console.WriteLine(InfectionParticlesPerPatient);
-
-			int[] ParticlesReceived = new int[(p + 1) * Gen1Patients];
+			int[] PatientsToInfect = new int[Gen1Patients];
 
 			// each patient will infect a group of patients of size Gen1Patients
 			int LastPatient = ((p + 1) * Gen1Patients) - 1; // the last patient of this group
 			int FirstPatient = LastPatient - (Gen1Patients - 1); // the first patient of this group
-			
-			Console.WriteLine(FirstPatient);
-			Console.WriteLine(LastPatient);
+
+			for (int x = 0; x < Gen1Patients; x++)
+			{
+				PatientsToInfect[x] = FirstPatient + x;
+				//Console.WriteLine(PatientsToInfect[x]);
+			}
+
+			//Console.WriteLine(FirstPatient);
+			//Console.WriteLine(LastPatient);
+
+			int patient = PatientsToInfect[Array.IndexOf(InfectionCycle, i)];
 
 			while (AmountOfParticlesAvailable > 0)
 			{
@@ -564,19 +574,14 @@ namespace Founder_Console_MarcosPC
 
 				if (InfectedParticles[rndClass] > 0) // there is at least one particle in the class selected
 				{
-					int rndPatient = rndx.Next(FirstPatient, LastPatient + 1); // the Random function includes the minVal and excludes the maxVal
-
-					if (ParticlesReceived[rndPatient] < InfectionParticlesPerPatient) // selected patient have not received max amount of particles yet
-					{
-						Matrix[g + 1][rndPatient, 0, rndClass] += 1;
-						ParticlesReceived[rndPatient] += 1;
-						InfectedParticles[rndClass] -= 1;
-						AmountOfParticlesAvailable--;
-
-						Console.WriteLine("G {0} - P {1}, particles: {2}", g + 1, rndPatient, ParticlesReceived[rndPatient]);
-					}
+					Matrix[g + 1][patient, 0, rndClass] += 1;
+					//ParticlesReceived[patient] += 1;
+					InfectedParticles[rndClass] -= 1;
+					AmountOfParticlesAvailable--;
 				}
 			}
+
+			Console.WriteLine("G {0} P {1} infected G {2} P {3}", g, p, g + 1, patient);
 		}
 
 		static void PrintOutput(int[][,,] Matrix)
