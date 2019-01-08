@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import numpy
 import random
+from datetime import datetime
 
 # Number of Generations
 # Generation 0 always have only 1 patient
@@ -52,21 +51,17 @@ ClassUpParticles = []
 ClassDownParticles = []
 
 def main():
-
-    #Random rnd = new Random()
+    
+    print("\nMain function started: " + str(datetime.now()) + "\n")
+    startTime = datetime.now()
 
     # number of patients at 1st generation is defined by the number of cycles that 
     # occur infection
     #Gen1Patients = InfectionCycle.GetLength(0)
 
-    # create and start the Stopwatch Class. From: https://msdn.microsoft.com/en-us/library/system.diagnostics.stopwatch
-    #Stopwatch stopWatch = new Stopwatch()
-    #stopWatch.Start()
-    #Thread.Sleep(10000);
-
     # Declaring the three-dimensional Matrix: 
-    # it has p Patient, x lines of Cycles and y columns of Classes, 
-    # defined by the variables above. 
+    # it has p Patients, Cy lines of Cycles and Cl columns of Classes, 
+    # defined by the variables at the begginning of the code. 
 
     for g in range(Generations):
         Matrix.append([])
@@ -86,7 +81,7 @@ def main():
         # SECOND PARAMENTER: increment
 
     else:
-        FillDeleteriousArray(0.8, 0.9, 5)
+        FillDeleteriousArray(0.9, 0.9, 5)
         # FIRST PARAMETER: first probability
         # SECOND PARAMENTER: second probability
         # THIRD PARAMETER: cycle to change from first probability to second probability
@@ -110,16 +105,10 @@ def main():
 
     RunPatients(Matrix)
 
-    #stopWatch.Stop()
-    # Get the elapsed time as a TimeSpan value.
-    #TimeSpan ts = stopWatch.Elapsed
-
     PrintOutput(Matrix)
-
-    # Format and display the TimeSpan value.
-    #string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-    #OutputConsole.AppendText(Environment.NewLine);
-    #OutputConsole.AppendText("Total Run Time: " + elapsedTime);
+    
+    print("\nMain function ended: " + str(datetime.now()) + "\n")
+    print("Total run time: " + str(datetime.now() - startTime) + "\n")
 
 def FillDeleteriousArray(FirstProbability, SecondProbability, ChangeCycle):
     for i in range(Cycles):
@@ -159,6 +148,9 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
                 BeneficialProbability[i] = BeneficialProbability[i - 1]
 
 def RunPatients(Matrix):
+    
+    # print("RunPatients function started: " + str(datetime.now()) + "\n")
+    
     # Main Loop to create more particles on the next Cycles from the Cycle Zero (lines values).
     # Each matrix position will bring a value. This value will be mutiplied by its own class number (column value). 
     for g in range(Generations):
@@ -175,6 +167,8 @@ def RunPatients(Matrix):
                 
                 CutOffMaxParticlesPerCycle(Matrix, g, p, Cy)
                 ApplyMutationsProbabilities(Matrix, g, p, Cy)
+                
+                #print("Cycle " + str(Cy) + " " + str(Matrix[g][p, Cy]))
 
 				# if the INFECTIONCYLE array contains the cycle "i"
 				# and it is not the last generation, make infection
@@ -186,26 +180,27 @@ def RunPatients(Matrix):
 					    # print which Cycle was finished just to give user feedback, because it may take too long to run.
 					    #Console.WriteLine("Cycles processed: {0}", i);
 					    #Console.WriteLine("Patients processed: GEN {0} - P {1}", g, p);
+                        
 
 def ApplyMutationsProbabilities(Matrix, g, p, Cy):
     # This function will apply three probabilities: Deleterious, Beneficial or Neutral.
     # Their roles is to simulate real mutations of virus genome.
     # So here, there are mutational probabilities, which will bring an 
     # stochastic scenario sorting the progenies by the classes.
-
+    
     UpParticles = 0
     DownParticles = 0 
 
 	# array to store the number of particles of each class, in the current cycle
     ThisCycle = [0] * Classes
 
-    for j in range(Classes):
+    for Cl in range(Classes):
         # storing the number of particles of each class (j)
-        ThisCycle[j] = Matrix[g][p, Cy, j]
+        ThisCycle[Cl] = Matrix[g][p, Cy, Cl]
         
-    for j in range(Classes):
-        if (ThisCycle[j] > 0 & Cy > 0):
-            for particles in range(j):
+    for Cl in range(Classes):
+        if (ThisCycle[Cl] > 0 and Cy > 0):
+            for particles in range(ThisCycle[Cl].astype(numpy.int64)):
                 # In this loop, for each particle removed from the Matrix [i,j], a random number is selected.
                 # Here a random (float) number greater than zero and less than one is selected.
                 RandomNumber = random.random()
@@ -219,18 +214,18 @@ def ApplyMutationsProbabilities(Matrix, g, p, Cy):
 
                 if RandomNumber < DeleteriousProbability[Cy]:
                     # Deleterious Mutation = 90,0% probability (0.9)
-                    Matrix[g][p, Cy, (j - 1)] = Matrix[g][p, Cy, (j - 1)] + 1
-                    Matrix[g][p, Cy, j] = Matrix[g][p, Cy, j] - 1
+                    Matrix[g][p, Cy, (Cl - 1)] = Matrix[g][p, Cy, (Cl - 1)] + 1
+                    Matrix[g][p, Cy, Cl] = Matrix[g][p, Cy, Cl] - 1
                     
                     DownParticles += 1
                 
                 elif (RandomNumber < (DeleteriousProbability[Cy] + BeneficialProbability[Cy])):
                     # Beneficial Mutation = 0,5% probability (0.005)
-                    if (j < (Classes - 1)):
-                        Matrix[g][p, Cy, (j + 1)] = Matrix[g][p, Cy, (j + 1)] + 1
-                        Matrix[g][p, Cy, j] = Matrix[g][p, Cy, j] - 1
-                    if (j == Classes):
-                        Matrix[g][p, Cy, j] = Matrix[g][p, Cy, j] + 1
+                    if (Cl < (Classes - 1)):
+                        Matrix[g][p, Cy, (Cl + 1)] = Matrix[g][p, Cy, (Cl + 1)] + 1
+                        Matrix[g][p, Cy, Cl] = Matrix[g][p, Cy, Cl] - 1
+                    if (Cl == Classes):
+                        Matrix[g][p, Cy, Cl] = Matrix[g][p, Cy, Cl] + 1
                         
                     UpParticles += 1
 
@@ -248,11 +243,20 @@ def ParticlesInCycle(Matrix, g, p, Cy):
 
 def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
     
+    #print("CutOffMaxParticlesPerCycle function started: " + str(datetime.now()) + "\n")
+    
     # Quantidade de partículas somadas por ciclo (linha)
     ParticlesInThisCycle = ParticlesInCycle(Matrix, g, p, Cy)
     
+    ParticlesInThisCycle = ParticlesInThisCycle.astype(numpy.int64)
+    
+    #print("Particles in this cycle: " + str(ParticlesInThisCycle) + "\n")
+    
     # Declarando o array que é a lista abaixo
     StatusR = [0] * Classes
+    
+    #print("Cycle: " + str(Cy))
+    #print("ParticlesInThisCycle - MaxParticles: " + str(ParticlesInThisCycle - MaxParticles) + "\n")
     
     # Se, x = ParticlesInCycle, for maior do que o núm MaxParticles definido, então...
     if ParticlesInThisCycle > MaxParticles:
@@ -263,64 +267,78 @@ def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
 
         # conversion of Numpy Float 64 do int
         # ParticlesInThisCycle.astype(numpy.int64)
+        
+        StatusR[0] = Matrix[g][p, Cy, 0]
+        StatusR[1] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1]
+        StatusR[2] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2]
+        StatusR[3] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3]
+        StatusR[4] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4]
+        StatusR[5] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5]
+        StatusR[6] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6]
+        StatusR[7] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7]
+        StatusR[8] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8]
+        StatusR[9] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9]
+        StatusR[10] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9] + Matrix[g][p, Cy, 10]
+        
+        #rndParticles = numpy.random.randint(0, ParticlesInThisCycle + 1, (ParticlesInThisCycle - MaxParticles))
+        
+        rndParticles = random.sample(range(ParticlesInThisCycle), (ParticlesInThisCycle - MaxParticles))
 
-        for particles in range(MaxParticles, ParticlesInThisCycle.astype(numpy.int64)):
+        #for particles in range(MaxParticles, ParticlesInThisCycle.astype(numpy.int64)):
+        for particle in rndParticles:
             
-            StatusR[0] = Matrix[g][p, Cy, 0]
-            StatusR[1] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1]
-            StatusR[2] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2]
-            StatusR[3] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3]
-            StatusR[4] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4]
-            StatusR[5] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5]
-            StatusR[6] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6]
-            StatusR[7] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7]
-            StatusR[8] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8]
-            StatusR[9] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9]
-            StatusR[10] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9] + Matrix[g][p, Cy, 10]
-
-			# Gero um número aleatório de 0 ao limite do valor de soma de partículas por 
-			# ciclo (linha) = ParticlesInCycle
-			#int RandomMaxParticles;
+			   # Gero um número aleatório de 0 ao limite do valor de soma de partículas por 
+			   # ciclo (linha) = ParticlesInCycle
             #rndParticle = random.randint(0, ParticlesInThisCycle)
-            rndParticle = numpy.random.randint(ParticlesInThisCycle)
+            #rndParticle = numpy.random.randint(ParticlesInThisCycle)
+            
+            #rndParticle = int(random.uniform(0, ParticlesInThisCycle))
+            #rndParticle = int(ParticlesInThisCycle * random.random())
+            
+            #print("ParticlesInThisCycle - MaxParticles: " + str(ParticlesInThisCycle - MaxParticles) + "\n")
+            
+            #print("Particle: " + str(particles) + " Random Particle: " + str(rndParticle))
             
             # Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
             # ParticlesInCycle atinja o limite estipulado por MaxParticles
             
-            if (rndParticle > 0 and rndParticle <= StatusR[0]):
+            if (particle > 0 and particle <= StatusR[0]):
                 Matrix[g][p, Cy, 0] = Matrix[g][p, Cy, 0] - 1
                 
-            if (rndParticle > StatusR[0] and rndParticle <= StatusR[1]):
+            elif (particle > StatusR[0] and particle <= StatusR[1]):
                 Matrix[g][p, Cy, 1] = Matrix[g][p, Cy, 1] - 1
                 
-            if (rndParticle > StatusR[1] and rndParticle <= StatusR[2]):
+            elif (particle > StatusR[1] and particle <= StatusR[2]):
                 Matrix[g][p, Cy, 2] = Matrix[g][p, Cy, 2] - 1
                 
-            if (rndParticle > StatusR[2] and rndParticle <= StatusR[3]):
+            elif (particle > StatusR[2] and particle <= StatusR[3]):
                 Matrix[g][p, Cy, 3] = Matrix[g][p, Cy, 3] - 1
                 
-            if (rndParticle > StatusR[3] and rndParticle <= StatusR[4]):
+            elif (particle > StatusR[3] and particle <= StatusR[4]):
                 Matrix[g][p, Cy, 4] = Matrix[g][p, Cy, 4] - 1
                 
-            if (rndParticle > StatusR[4] and rndParticle <= StatusR[5]):
+            elif (particle > StatusR[4] and particle <= StatusR[5]):
                 Matrix[g][p, Cy, 5] = Matrix[g][p, Cy, 5] - 1
                 
-            if (rndParticle > StatusR[5] and rndParticle <= StatusR[6]):
+            elif (particle > StatusR[5] and particle <= StatusR[6]):
                 Matrix[g][p, Cy, 6] = Matrix[g][p, Cy, 6] - 1
                 
-            if (rndParticle > StatusR[6] and rndParticle <= StatusR[7]):
+            elif (particle > StatusR[6] and particle <= StatusR[7]):
                 Matrix[g][p, Cy, 7] = Matrix[g][p, Cy, 7] - 1
                 
-            if (rndParticle > StatusR[7] and rndParticle <= StatusR[8]):
+            elif (particle > StatusR[7] and particle <= StatusR[8]):
                 Matrix[g][p, Cy, 8] = Matrix[g][p, Cy, 8] - 1
                 
-            if (rndParticle > StatusR[8] and rndParticle <= StatusR[9]):
+            elif (particle > StatusR[8] and particle <= StatusR[9]):
                 Matrix[g][p, Cy, 9] = Matrix[g][p, Cy, 9] - 1
                 
-            if (rndParticle > StatusR[9] and rndParticle <= StatusR[10]):
+            elif (particle > StatusR[9] and particle <= StatusR[10]):
                 Matrix[g][p, Cy, 10] = Matrix[g][p, Cy, 10] - 1
+                  
+    #print("CutOffMaxParticlesPerCycle function end: " + str(datetime.now()) + "\n")
 
 def PickRandomParticlesForInfection(Matrix, g, p, Cy):
+    
     NoParticlesForInfection = False
     
     # array to store the particles that will infect patients of the next generation
@@ -333,6 +351,7 @@ def PickRandomParticlesForInfection(Matrix, g, p, Cy):
 
 	#for (int ParticlesSelected = 0; ParticlesSelected < InfectionParticles; ParticlesSelected++):
     for ParticlesSelected in range(InfectionParticles):
+        
         StatusR[0] = Matrix[g][p, Cy, 0]
         StatusR[1] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1]
         StatusR[2] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2]
@@ -413,7 +432,7 @@ def PickRandomParticlesForInfection(Matrix, g, p, Cy):
 def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
     AmountOfParticlesAvailable = InfectedParticles[0] + InfectedParticles[1] + InfectedParticles[2] + InfectedParticles[3] + InfectedParticles[4] + InfectedParticles[5] + InfectedParticles[6] + InfectedParticles[7] + InfectedParticles[8] + InfectedParticles[9] + InfectedParticles[10]
     
-    #Console.WriteLine(AmountOfParticlesAvailable);
+    #print(AmountOfParticlesAvailable);
     
     PatientsToInfect = [0] * Gen1Patients
     
@@ -423,10 +442,10 @@ def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
     
     for x in range(Gen1Patients):
         PatientsToInfect[x] = FirstPatient + x
-        #Console.WriteLine(PatientsToInfect[x]);
+        #print(PatientsToInfect[x]);
         
-    #Console.WriteLine(FirstPatient);
-    #Console.WriteLine(LastPatient);
+    #print(FirstPatient);
+    #print(LastPatient);
     
     # looks for the first occurrence of the required patient
     # Example: Cycle 6. If InfectionCycle = [ 2, 4, 6 ], so InfectionCycle.index(Cy) = 2
@@ -442,46 +461,36 @@ def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
             InfectedParticles[rndClass] -= 1
             AmountOfParticlesAvailable -= 1
 
-        #Console.WriteLine("G {0} P {1} infected G {2} P {3}", g, p, g + 1, patient)
+        #print("G {0} P {1} infected G {2} P {3}", g, p, g + 1, patient)
 
 def PrintOutput(Matrix):
+    
     PercentageOfParticlesUp = 0.0
     PercentageOfParticlesDown = 0.0
     
-    #StreamWriter writer = new StreamWriter("numbers.txt");
-    # The writer will bring the output file (txt in this case)
-    # Ensure the writer will be closed when no longer used
-    #using (writer)
-        # Formatting Output for the Console screen. 
-        #OutputConsole.AppendText("\t\tR0\tR1\tR2\tR3\tR4\tR5\tR6\tR7\tR8\tR9\tR10")
-        #OutputConsole.AppendText(Environment.NewLine)
-        #OutputConsole.AppendText(Environment.NewLine)
-        #writer.Write("\t\tSoma\tR0\tR1\tR2\tR3\tR4\tR5\tR6\tR7\tR8\t\tR9\t\tR10\n\n");
-        #writer.WriteLine("\n");
-        
+    # TODO needs code to write output to txt file
+    
+    # Formatting Output for the Console screen. 
+    print("\n \t\t\tR0\tR1\tR2\tR3\tR4\tR5\tR6\tR7\tR8\tR9\tR10 ")
+
     for g in range(Generations):
         for p in range(pow(Gen1Patients, g)):
             for Cy in range(Cycles):
-                #OutputConsole.AppendText("G " + g + " P " + p + " Cycle " + i + "\t")
-                #writer.Write("G {0} P {1} Cic.{2} {3}\t\t", g, p, i, ParticlesInCycle(Matrix, g, p, i));
+                
+                Line = "G " + str(g) + " P " + str(p) + " Cycle " + str(Cy) + "\t\t"
                 
                 for Cl in range(Classes):
-                    #OutputConsole.AppendText(Matrix[g][p, i, j].ToString() + "\t")
-                    #writer.Write("{0}\t", Matrix[g][p, i, j]);
                     
-                    PercentageOfParticlesUp = (Convert.ToDouble(ClassUpParticles[g][p, Cy]) / Convert.ToDouble(ParticlesInCycle(Matrix, g, p, Cy))) * 100
-                    PercentageOfParticlesDown = (Convert.ToDouble(ClassDownParticles[g][p,Cy]) / Convert.ToDouble(ParticlesInCycle(Matrix, g, p, Cy))) * 100
-
-				    #Console.WriteLine("\nSoma do ciclo {0}: {1}", i, ParticlesInCycle(Matrix, g, p, i))
-				    #Console.WriteLine("Particles Up: {0}, {1} %", ClassUpParticles[g][p, i], PercentageOfParticlesUp)
-				    #Console.WriteLine("Particles Down: {0}, {1} %", ClassDownParticles[g][p, i], PercentageOfParticlesDown)
-				    #Console.Write("\n");
-
-				    #OutputConsole.AppendText(Environment.NewLine)
-				    #OutputConsole.AppendText(Environment.NewLine)
-				    #writer.WriteLine("\n");
-
-			    #OutputConsole.AppendText("******************************************************" +
-			    #OutputConsole.AppendText(Environment.NewLine)
+                    Line += str(Matrix[g][p, Cy, Cl]) + "\t"
+                    
+                    PercentageOfParticlesUp = (ClassUpParticles[g][p, Cy] / ParticlesInCycle(Matrix, g, p, Cy))
+                    PercentageOfParticlesDown = (ClassDownParticles[g][p,Cy] / ParticlesInCycle(Matrix, g, p, Cy))
+                    
+                print(Line)
+                print("\nSoma do ciclo " + str(Cy) + ": " + str(ParticlesInCycle(Matrix, g, p, Cy)))
+                print("Particles Up: " + str(ClassUpParticles[g][p, Cy]) + " - " + str(PercentageOfParticlesUp))
+                print("Particles Down: " + str(ClassDownParticles[g][p, Cy]) + " - " + str(PercentageOfParticlesDown) + "\n")
+            
+            print("\n****************************************************** \n")
 
 main()
