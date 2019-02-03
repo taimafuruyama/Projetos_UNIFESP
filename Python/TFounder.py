@@ -2,10 +2,12 @@ import numpy
 import random
 from datetime import datetime
 
+import ParticleClass
+
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the PATIENTS variable
-Generations = 2
+Generations = 1
 
 # this array is called inside the RunPatients function
 # it is an array because if there is increment from the infection cycle from one patient to another,
@@ -13,7 +15,7 @@ Generations = 2
 InfectionCycle = [ 2, 4 ]
 
 # Number of Patients in Generation 1
-Gen1Patients = 4
+Gen1Patients = 1
 
 # Number of Cycles
 Cycles = 10
@@ -26,6 +28,8 @@ Matrix = []
 
 # The "InitialParticles" is the initial amount of viral particles, that is: the initial virus population of a infection.
 InitialParticles = 5
+
+ClassOfInitialParticles = 10
 
 InfectionParticles = 20
 
@@ -69,7 +73,7 @@ def main():
         ClassDownParticles.append([])
     
         # numpy.zeros fills the array with zeros (0) in each position
-        Matrix[g] = numpy.zeros((pow(Gen1Patients, g), Cycles, Classes))
+        Matrix[g] = numpy.zeros((pow(Gen1Patients, g), Cycles))
         ClassUpParticles[g] = numpy.zeros((pow(Gen1Patients, g), Cycles))
         ClassDownParticles[g] = numpy.zeros((pow(Gen1Patients, g), Cycles))
 
@@ -101,7 +105,8 @@ def main():
     # The "InitialParticles" is the amount of viral particles that exists in the class 10 on the cycle zero.
     # That is: these 5 particles have the potential to create 10 particles each.
 
-    Matrix[0][0, 0, 10] = InitialParticles
+    for i in range(InitialParticles):
+        Matrix[0][0, 0].append(ParticleClass.Particle(ClassOfInitialParticles))
 
     RunPatients(Matrix)
 
@@ -162,7 +167,6 @@ def RunPatients(Matrix):
                     if(Cy > 0):
                         # Multiplies the number os particles from de previous Cycle by the Class number which belongs.
                         # This is the progeny composition.
-                        #Matrix[p, i, j] = Matrix[p, (i - 1), j] * j;
                         Matrix[g][p, Cy, Cl] = Matrix[g][p, (Cy - 1), Cl] * Cl
                 
                 CutOffMaxParticlesPerCycle(Matrix, g, p, Cy)
