@@ -1,21 +1,22 @@
-import numpy
+import numpy as np
 import random
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 import ParticleClass
 
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the PATIENTS variable
-Generations = 1
+Generations = 2
 
 # this array is called inside the RunPatients function
 # it is an array because if there is increment from the infection cycle from one patient to another,
 # different values for infection cycle have to be stored
-InfectionCycle = [ 2, 4 ]
+InfectionCycle = [ 2, 4, 6, 8 ]
 
 # Number of Patients in Generation 1
-Gen1Patients = 1
+Gen1Patients = 4
 
 # Number of Cycles
 Cycles = 10
@@ -34,7 +35,7 @@ ClassOfInitialParticles = 10
 InfectionParticles = 20
 
 # Limite máximo de partículas que quero impor para cada ciclo (linha)	
-MaxParticles = 1000000
+MaxParticles = 1000
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -64,7 +65,7 @@ def main():
     #Gen1Patients = InfectionCycle.GetLength(0)
 
     # Declaring the three-dimensional Matrix: 
-    # it has p Patients, Cy lines of Cycles and Cl columns of Classes, 
+    # it has p Patients, Cy lines of Cycles, 
     # defined by the variables at the begginning of the code. 
 
     for g in range(Generations):
@@ -72,10 +73,21 @@ def main():
         ClassUpParticles.append([])
         ClassDownParticles.append([])
     
-        # numpy.zeros fills the array with zeros (0) in each position
-        Matrix[g] = numpy.zeros((pow(Gen1Patients, g), Cycles))
-        ClassUpParticles[g] = numpy.zeros((pow(Gen1Patients, g), Cycles))
-        ClassDownParticles[g] = numpy.zeros((pow(Gen1Patients, g), Cycles))
+        PatientsPerGen = pow(Gen1Patients, g)
+    
+        # in the FOR LOOP below, we append 1 array for each patient.
+        # and 1 array for each cycle.
+        # we only append cycle here (Cycle 0) because the cycles will be maked at the time
+        # each progeny is composed
+        for patients in range(PatientsPerGen):
+            Matrix[g].append([]) # patient
+            Matrix[g][patients].append([]) # cycle
+        
+            ClassUpParticles[g].append([]) # patient
+            ClassUpParticles[g][patients].append([]) # cycle
+            
+            ClassDownParticles[g].append([]) # patient
+            ClassDownParticles[g][patients].append([]) # cycle
 
 	#FillInfectionCycleArray(6, 0); // FIRST PARAMETER: initial cycle, SECOND PARAMENTER: increment
 
@@ -106,7 +118,12 @@ def main():
     # That is: these 5 particles have the potential to create 10 particles each.
 
     for i in range(InitialParticles):
-        Matrix[0][0, 0].append(ParticleClass.Particle(ClassOfInitialParticles))
+        Matrix[0][0][0].append(ParticleClass.Particle(ClassOfInitialParticles))
+      
+#    print(Matrix[0][0][0][0])    
+#        
+#    for i in range(InitialParticles):
+#        print(Matrix[0][0][0][i].id)
 
     RunPatients(Matrix)
 
@@ -156,34 +173,38 @@ def RunPatients(Matrix):
     
     # print("RunPatients function started: " + str(datetime.now()) + "\n")
     
-    # Main Loop to create more particles on the next Cycles from the Cycle Zero (lines values).
-    # Each matrix position will bring a value. This value will be mutiplied by its own class number (column value). 
+    # Main Loop to create more particles on the next Cycles from the Cycle Zero.
+    # Each matrix position will bring a value. This value will be mutiplied by its own class number. 
     for g in range(Generations):
         for p in range(pow(Gen1Patients, g)): # pow(Gen1Patients, g) gives the generation size
-            print(f"Patient started: GEN {g} - P {p}")
+            print("Patient started: GEN " + str(g) + " - P " + str(p))
             
             for Cy in range(Cycles):
-                for Cl in range(Classes):
-                    if(Cy > 0):
-                        # Multiplies the number os particles from de previous Cycle by the Class number which belongs.
-                        # This is the progeny composition.
-                        Matrix[g][p, Cy, Cl] = Matrix[g][p, (Cy - 1), Cl] * Cl
+                
+                if(Cy > 0):
+                    Matrix[g][p].append([]) # adds 1 cycle
+                    
+                    ClassUpParticles[g][p].append([]) # adds 1 cycle
+                    ClassDownParticles[g][p].append([]) # adds 1 cycle
+                
+                    for particle in Matrix[g][p][Cy - 1]: # takes 1 particle from previous cycle
+                        for i in range(particle.R): # creates N new particles, based on the R class
+                            Matrix[g][p][Cy].append(ParticleClass.Particle(particle.R))
                 
                 CutOffMaxParticlesPerCycle(Matrix, g, p, Cy)
                 ApplyMutationsProbabilities(Matrix, g, p, Cy)
                 
                 #print("Cycle " + str(Cy) + " " + str(Matrix[g][p, Cy]))
 
-				# if the INFECTIONCYLE array contains the cycle "i"
+				# if the INFECTIONCYLE array contains the cycle "Cy"
 				# and it is not the last generation, make infection
                 if Cy in InfectionCycle:
                     if g < Generations - 1:
                         PickRandomParticlesForInfection(Matrix, g, p, Cy)
-					    #Console.WriteLine("*** INFECTION CYCLE *** {0}", i);
 
 					    # print which Cycle was finished just to give user feedback, because it may take too long to run.
-					    #Console.WriteLine("Cycles processed: {0}", i);
-					    #Console.WriteLine("Patients processed: GEN {0} - P {1}", g, p);
+					    #print("Cycles processed: " + str(Cy));
+					    #print("Patients processed: GEN " + str(g) + " - P " + str(p));
                         
 
 def ApplyMutationsProbabilities(Matrix, g, p, Cy):
@@ -194,249 +215,69 @@ def ApplyMutationsProbabilities(Matrix, g, p, Cy):
     
     UpParticles = 0
     DownParticles = 0 
-
-	# array to store the number of particles of each class, in the current cycle
-    ThisCycle = [0] * Classes
-
-    for Cl in range(Classes):
-        # storing the number of particles of each class (j)
-        ThisCycle[Cl] = Matrix[g][p, Cy, Cl]
-        
-    for Cl in range(Classes):
-        if (ThisCycle[Cl] > 0 and Cy > 0):
-            for particles in range(ThisCycle[Cl].astype(numpy.int64)):
-                # In this loop, for each particle removed from the Matrix [i,j], a random number is selected.
-                # Here a random (float) number greater than zero and less than one is selected.
-                RandomNumber = random.random()
-                
-                # If the random number is less than the DeleteriousProbability 
-                # defined, one particle of the previous Cycle will 
-                # decrease one Class number. Remember this function is 
-                # inside a loop for each i and each j values.
-                # So this loop will run through the whole Matrix, 
-                # particle by particle on its own positions. 
-
-                if RandomNumber < DeleteriousProbability[Cy]:
-                    # Deleterious Mutation = 90,0% probability (0.9)
-                    Matrix[g][p, Cy, (Cl - 1)] = Matrix[g][p, Cy, (Cl - 1)] + 1
-                    Matrix[g][p, Cy, Cl] = Matrix[g][p, Cy, Cl] - 1
-                    
-                    DownParticles += 1
-                
-                elif (RandomNumber < (DeleteriousProbability[Cy] + BeneficialProbability[Cy])):
-                    # Beneficial Mutation = 0,5% probability (0.005)
-                    if (Cl < (Classes - 1)):
-                        Matrix[g][p, Cy, (Cl + 1)] = Matrix[g][p, Cy, (Cl + 1)] + 1
-                        Matrix[g][p, Cy, Cl] = Matrix[g][p, Cy, Cl] - 1
-                    if (Cl == Classes):
-                        Matrix[g][p, Cy, Cl] = Matrix[g][p, Cy, Cl] + 1
-                        
-                    UpParticles += 1
-
-    ClassUpParticles[g][p, Cy] = UpParticles
-    ClassDownParticles[g][p, Cy] = DownParticles
-
-def ParticlesInCycle(Matrix, g, p, Cy):
-    # This funtion brings the sum value of particles by Cycle. 
-    Particles = 0
     
-    for j in range(Classes):
-        Particles = Particles + Matrix[g][p, Cy, j]
-        
-    return Particles
+    if(Cy > 0):
+        for particle in Matrix[g][p][Cy]:
+            # In this loop, for each particle a random number is selected.
+            # Here a random (float) number greater than zero and less than one is selected.
+            RandomNumber = random.random()
+            
+            # If the random number is less than the DeleteriousProbability 
+            # defined, one particle of the previous Cycle will 
+            # decrease one Class number. Remember this function is 
+            # inside a loop for each Cy and each Cl values.
+            # So this loop will run through the whole Matrix, 
+            # particle by particle on its own positions.
+            
+            if RandomNumber < DeleteriousProbability[Cy]:
+                # Deleterious Mutation = 90,0% probability (0.9)
+                particle.DemoteClass()
+                DownParticles += 1
+                
+            elif (RandomNumber < (DeleteriousProbability[Cy] + BeneficialProbability[Cy])):
+                # Beneficial Mutation = 0,5% probability (0.005)
+                particle.RaiseClass()
+                UpParticles += 1
+
+    ClassUpParticles[g][p][Cy] = UpParticles
+    ClassDownParticles[g][p][Cy] = DownParticles
 
 def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
     
-    #print("CutOffMaxParticlesPerCycle function started: " + str(datetime.now()) + "\n")
+    if(len(Matrix[g][p][Cy]) > MaxParticles):
     
-    # Quantidade de partículas somadas por ciclo (linha)
-    ParticlesInThisCycle = ParticlesInCycle(Matrix, g, p, Cy)
-    
-    ParticlesInThisCycle = ParticlesInThisCycle.astype(numpy.int64)
-    
-    #print("Particles in this cycle: " + str(ParticlesInThisCycle) + "\n")
-    
-    # Declarando o array que é a lista abaixo
-    StatusR = [0] * Classes
-    
-    #print("Cycle: " + str(Cy))
-    #print("ParticlesInThisCycle - MaxParticles: " + str(ParticlesInThisCycle - MaxParticles) + "\n")
-    
-    # Se, x = ParticlesInCycle, for maior do que o núm MaxParticles definido, então...
-    if ParticlesInThisCycle > MaxParticles:
-        # Para cada valor de x iniciando no valor de soma das partículas por ciclo;
-	    # sendo x, ou seja, esta soma, maior do que o limite MaxParticles definido;
-	    # então, diminua em uma unidade a soma das partículas por ciclo 
-	    # até que atinja o limite MaxParticles definido.
-
-        # conversion of Numpy Float 64 do int
-        # ParticlesInThisCycle.astype(numpy.int64)
+        rndParticles = random.sample(Matrix[g][p][Cy], MaxParticles)
         
-        StatusR[0] = Matrix[g][p, Cy, 0]
-        StatusR[1] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1]
-        StatusR[2] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2]
-        StatusR[3] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3]
-        StatusR[4] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4]
-        StatusR[5] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5]
-        StatusR[6] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6]
-        StatusR[7] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7]
-        StatusR[8] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8]
-        StatusR[9] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9]
-        StatusR[10] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9] + Matrix[g][p, Cy, 10]
-        
-        #rndParticles = numpy.random.randint(0, ParticlesInThisCycle + 1, (ParticlesInThisCycle - MaxParticles))
-        
-        rndParticles = random.sample(range(ParticlesInThisCycle), (ParticlesInThisCycle - MaxParticles))
-
-        #for particles in range(MaxParticles, ParticlesInThisCycle.astype(numpy.int64)):
-        for particle in rndParticles:
-            
-			   # Gero um número aleatório de 0 ao limite do valor de soma de partículas por 
-			   # ciclo (linha) = ParticlesInCycle
-            #rndParticle = random.randint(0, ParticlesInThisCycle)
-            #rndParticle = numpy.random.randint(ParticlesInThisCycle)
-            
-            #rndParticle = int(random.uniform(0, ParticlesInThisCycle))
-            #rndParticle = int(ParticlesInThisCycle * random.random())
-            
-            #print("ParticlesInThisCycle - MaxParticles: " + str(ParticlesInThisCycle - MaxParticles) + "\n")
-            
-            #print("Particle: " + str(particles) + " Random Particle: " + str(rndParticle))
-            
-            # Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
-            # ParticlesInCycle atinja o limite estipulado por MaxParticles
-            
-            if (particle > 0 and particle <= StatusR[0]):
-                Matrix[g][p, Cy, 0] = Matrix[g][p, Cy, 0] - 1
-                
-            elif (particle > StatusR[0] and particle <= StatusR[1]):
-                Matrix[g][p, Cy, 1] = Matrix[g][p, Cy, 1] - 1
-                
-            elif (particle > StatusR[1] and particle <= StatusR[2]):
-                Matrix[g][p, Cy, 2] = Matrix[g][p, Cy, 2] - 1
-                
-            elif (particle > StatusR[2] and particle <= StatusR[3]):
-                Matrix[g][p, Cy, 3] = Matrix[g][p, Cy, 3] - 1
-                
-            elif (particle > StatusR[3] and particle <= StatusR[4]):
-                Matrix[g][p, Cy, 4] = Matrix[g][p, Cy, 4] - 1
-                
-            elif (particle > StatusR[4] and particle <= StatusR[5]):
-                Matrix[g][p, Cy, 5] = Matrix[g][p, Cy, 5] - 1
-                
-            elif (particle > StatusR[5] and particle <= StatusR[6]):
-                Matrix[g][p, Cy, 6] = Matrix[g][p, Cy, 6] - 1
-                
-            elif (particle > StatusR[6] and particle <= StatusR[7]):
-                Matrix[g][p, Cy, 7] = Matrix[g][p, Cy, 7] - 1
-                
-            elif (particle > StatusR[7] and particle <= StatusR[8]):
-                Matrix[g][p, Cy, 8] = Matrix[g][p, Cy, 8] - 1
-                
-            elif (particle > StatusR[8] and particle <= StatusR[9]):
-                Matrix[g][p, Cy, 9] = Matrix[g][p, Cy, 9] - 1
-                
-            elif (particle > StatusR[9] and particle <= StatusR[10]):
-                Matrix[g][p, Cy, 10] = Matrix[g][p, Cy, 10] - 1
-                  
-    #print("CutOffMaxParticlesPerCycle function end: " + str(datetime.now()) + "\n")
+        Matrix[g][p][Cy].clear()
+    
+        Matrix[g][p][Cy] = rndParticles
 
 def PickRandomParticlesForInfection(Matrix, g, p, Cy):
     
     NoParticlesForInfection = False
     
-    # array to store the particles that will infect patients of the next generation
-    # it is just a 1D array (a list) where each index is a class
-    InfectedParticles = [0] *Classes
+    ParticlesInThisCycle = len(Matrix[g][p][Cy])
     
-    # Quantidade de partículas somadas por ciclo (linha)
-    ParticlesInThisCycle = ParticlesInCycle(Matrix, g, p, Cy)
-    StatusR = [0] * Classes; # TODO melhorar o nome deste array
-
-	#for (int ParticlesSelected = 0; ParticlesSelected < InfectionParticles; ParticlesSelected++):
-    for ParticlesSelected in range(InfectionParticles):
-        
-        StatusR[0] = Matrix[g][p, Cy, 0]
-        StatusR[1] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1]
-        StatusR[2] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2]
-        StatusR[3] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3]
-        StatusR[4] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4]
-        StatusR[5] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5]
-        StatusR[6] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6]
-        StatusR[7] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7]
-        StatusR[8] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8]
-        StatusR[9] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9]
-        StatusR[10] = Matrix[g][p, Cy, 0] + Matrix[g][p, Cy, 1] + Matrix[g][p, Cy, 2] + Matrix[g][p, Cy, 3] + Matrix[g][p, Cy, 4] + Matrix[g][p, Cy, 5] + Matrix[g][p, Cy, 6] + Matrix[g][p, Cy, 7] + Matrix[g][p, Cy, 8] + Matrix[g][p, Cy, 9] + Matrix[g][p, Cy, 10]
-        
-        # Gero um número aleatório de 0 ao limite do valor de soma de partículas por ciclo (linha) = ParticlesInCycle
-        #int RandomMaxParticles;
-        
-        if (ParticlesInThisCycle > 0):
-
-            #rndParticle = random.randint(0, ParticlesInThisCycle)
-            rndParticle = numpy.random.randint(ParticlesInThisCycle)
-            
-            # Aqui gero as condições para saber de qual classe serão retiradas as partículas para que 
-            # ParticlesSelected atinja o limite estipulado por InfectioParticles 
-            
-            if (rndParticle > 0 and rndParticle <= StatusR[0]):
-                InfectedParticles[0] += 1
-                Matrix[g][p, Cy, 0] -= 1
-                
-            if (rndParticle > StatusR[0] and rndParticle <= StatusR[1]):
-                InfectedParticles[1] += 1
-                Matrix[g][p, Cy, 1] -= 1
-                
-            if (rndParticle > StatusR[1] and rndParticle <= StatusR[2]):
-                InfectedParticles[2] += 1
-                Matrix[g][p, Cy, 2] -= 1
-                
-            if (rndParticle > StatusR[2] and rndParticle <= StatusR[3]):
-                InfectedParticles[3] += 1
-                Matrix[g][p, Cy, 3] -= 1
-                
-            if (rndParticle > StatusR[3] and rndParticle <= StatusR[4]):
-                InfectedParticles[4] += 1
-                Matrix[g][p, Cy, 4] -= 1
-                
-            if (rndParticle > StatusR[4] and rndParticle <= StatusR[5]):
-                InfectedParticles[5] += 1
-                Matrix[g][p, Cy, 5] -= 1
-                
-            if (rndParticle > StatusR[5] and rndParticle <= StatusR[6]):
-                InfectedParticles[6] += 1
-                Matrix[g][p, Cy, 6] -= 1
-                
-            if (rndParticle > StatusR[6] and rndParticle <= StatusR[7]):
-                InfectedParticles[7] += 1
-                Matrix[g][p, Cy, 7] -= 1
-                
-            if (rndParticle > StatusR[7] and rndParticle <= StatusR[8]):
-                InfectedParticles[8] += 1
-                Matrix[g][p, Cy, 8] -= 1
-                
-            if (rndParticle > StatusR[8] and rndParticle <= StatusR[9]):
-                InfectedParticles[9] += 1
-                Matrix[g][p, Cy, 9] -= 1
-                
-            if (rndParticle > StatusR[9] and rndParticle <= StatusR[10]):
-                InfectedParticles[10] += 1
-                Matrix[g][p, Cy, 10] -= 1
-                
+    # TODO remove selected infection particles from the Matrix, or 
+    # copy the same particle, to keep the id
+    
+    if (ParticlesInThisCycle > 0):
+        if(ParticlesInThisCycle >= InfectionParticles):
+            InfectedParticles = random.sample(Matrix[g][p][Cy], InfectionParticles)
         else:
-            NoParticlesForInfection = True
-            
+            InfectedParticles = random.sample(Matrix[g][p][Cy], ParticlesInThisCycle)
+        
+    else:
+        NoParticlesForInfection = True
+    
     # if there are no particles for infection, there is no infection
     if (NoParticlesForInfection):
-        print(f"Patient {p} Cycle {Cy} has no particles.")
+        print("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.")
         
     else:
         InfectPatients(Matrix, InfectedParticles, g, p, Cy)
-
-def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
-    AmountOfParticlesAvailable = InfectedParticles[0] + InfectedParticles[1] + InfectedParticles[2] + InfectedParticles[3] + InfectedParticles[4] + InfectedParticles[5] + InfectedParticles[6] + InfectedParticles[7] + InfectedParticles[8] + InfectedParticles[9] + InfectedParticles[10]
     
-    #print(AmountOfParticlesAvailable);
+def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
     
     PatientsToInfect = [0] * Gen1Patients
     
@@ -456,16 +297,13 @@ def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
     # So, patient = PatientsToInfect[2]
     patient = PatientsToInfect[InfectionCycle.index(Cy)]
     
-    while (AmountOfParticlesAvailable > 0):
-        rndClass = random.randint(0, Classes - 1)
+    for particle in InfectedParticles:
+        # creates 1 new particle, on a patient in the next generation
+        # in cycle 0. The new particle will be of the same class of the
+        # one that infected the patient
+        Matrix[g + 1][patient][0].append(ParticleClass.Particle(particle.R))
         
-        if (InfectedParticles[rndClass] > 0): # there is at least one particle in the class selected
-            Matrix[g + 1][patient, 0, rndClass] += 1
-            #ParticlesReceived[patient] += 1
-            InfectedParticles[rndClass] -= 1
-            AmountOfParticlesAvailable -= 1
-
-        #print("G {0} P {1} infected G {2} P {3}", g, p, g + 1, patient)
+    print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient))
 
 def PrintOutput(Matrix):
     
@@ -483,18 +321,42 @@ def PrintOutput(Matrix):
                 
                 Line = "G " + str(g) + " P " + str(p) + " Cycle " + str(Cy) + "\t\t"
                 
+                ClassCount = [0] * Classes # R Classes from 0 to 10
+                
+                for particle in Matrix[g][p][Cy]:
+                    ClassCount[particle.R] += 1 # R Class 10 actually goes to array position 11
+                
                 for Cl in range(Classes):
-                    
-                    Line += str(Matrix[g][p, Cy, Cl]) + "\t"
-                    
-                    PercentageOfParticlesUp = (ClassUpParticles[g][p, Cy] / ParticlesInCycle(Matrix, g, p, Cy))
-                    PercentageOfParticlesDown = (ClassDownParticles[g][p,Cy] / ParticlesInCycle(Matrix, g, p, Cy))
+                    Line += str(ClassCount[Cl]) + "\t"
+                
+                if(len(Matrix[g][p][Cy]) > 0):
+                    PercentageOfParticlesUp = (ClassUpParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
+                    PercentageOfParticlesDown = (ClassDownParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
+                else:
+                    PercentageOfParticlesUp = 0.0
+                    PercentageOfParticlesDown = 0.0
                     
                 print(Line)
-                print("\nSoma do ciclo " + str(Cy) + ": " + str(ParticlesInCycle(Matrix, g, p, Cy)))
-                print("Particles Up: " + str(ClassUpParticles[g][p, Cy]) + " - " + str(PercentageOfParticlesUp))
-                print("Particles Down: " + str(ClassDownParticles[g][p, Cy]) + " - " + str(PercentageOfParticlesDown) + "\n")
+                print("\nSoma do ciclo " + str(Cy) + ": " + str(len(Matrix[g][p][Cy])))
+                print("Particles Up: " + str(ClassUpParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesUp))
+                print("Particles Down: " + str(ClassDownParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesDown) + "\n")
+            
+                plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
             
             print("\n****************************************************** \n")
-
+        
+            plt.xlabel('R Classes')
+            plt.ylabel('Number of Particles')
+            plt.title("Generation " + str(g) + " - Patient " + str(p))
+            plt.grid(True)
+            
+            plt.xticks(np.arange(0, 11, step = 1))
+            plt.yticks(np.arange(0, 1000, step = 100))
+            
+            plt.legend(bbox_to_anchor = (1.05, 1), loc = 'upper left')
+            
+            plt.savefig('Gen' + str(g) + 'Patient' + str(p) + '.png', dpi = 200, bbox_inches = 'tight')
+            
+            plt.show()
+        
 main()
