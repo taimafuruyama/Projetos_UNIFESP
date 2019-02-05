@@ -33,4 +33,4 @@ class Particle():
         
     def __del__(self):
         Particle.ParticleAmount -= 1
-        print("deleted")
+        #print("deleted")
