@@ -1,5 +1,7 @@
 import numpy as np
 import random
+import numba
+from numba import jit
 from datetime import datetime
 import matplotlib.pyplot as plt
 
@@ -8,7 +10,7 @@ import ParticleClass
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the PATIENTS variable
-Generations = 2
+Generations = 1
 
 # this array is called inside the RunPatients function
 # it is an array because if there is increment from the infection cycle from one patient to another,
@@ -16,7 +18,7 @@ Generations = 2
 InfectionCycle = [ 2, 4, 6, 8 ]
 
 # Number of Patients in Generation 1
-Gen1Patients = 4
+Gen1Patients = 1
 
 # Number of Cycles
 Cycles = 10
@@ -35,7 +37,7 @@ ClassOfInitialParticles = 10
 InfectionParticles = 20
 
 # Limite máximo de partículas que quero impor para cada ciclo (linha)	
-MaxParticles = 1000
+MaxParticles = 1000000
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -169,6 +171,7 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
             else:
                 BeneficialProbability[i] = BeneficialProbability[i - 1]
 
+#@jit (parallel = True)
 def RunPatients(Matrix):
     
     # print("RunPatients function started: " + str(datetime.now()) + "\n")
@@ -206,7 +209,7 @@ def RunPatients(Matrix):
 					    #print("Cycles processed: " + str(Cy));
 					    #print("Patients processed: GEN " + str(g) + " - P " + str(p));
                         
-
+#@jit 
 def ApplyMutationsProbabilities(Matrix, g, p, Cy):
     # This function will apply three probabilities: Deleterious, Beneficial or Neutral.
     # Their roles is to simulate real mutations of virus genome.
@@ -242,6 +245,7 @@ def ApplyMutationsProbabilities(Matrix, g, p, Cy):
     ClassUpParticles[g][p][Cy] = UpParticles
     ClassDownParticles[g][p][Cy] = DownParticles
 
+@jit
 def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
     
     if(len(Matrix[g][p][Cy]) > MaxParticles):
@@ -252,6 +256,7 @@ def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
     
         Matrix[g][p][Cy] = rndParticles
 
+@jit
 def PickRandomParticlesForInfection(Matrix, g, p, Cy):
     
     NoParticlesForInfection = False
@@ -341,7 +346,8 @@ def PrintOutput(Matrix):
                 print("Particles Up: " + str(ClassUpParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesUp))
                 print("Particles Down: " + str(ClassDownParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesDown) + "\n")
             
-                plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
+                #plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
+                plt.bar(range(Classes), ClassCount, label = 'Cycle ' + str(Cy))
             
             print("\n****************************************************** \n")
         
@@ -350,8 +356,8 @@ def PrintOutput(Matrix):
             plt.title("Generation " + str(g) + " - Patient " + str(p))
             plt.grid(True)
             
-            plt.xticks(np.arange(0, 11, step = 1))
-            plt.yticks(np.arange(0, 1000, step = 100))
+            #plt.xticks(np.arange(0, 11, step = 1))
+            #plt.yticks(np.arange(0, 1000, step = 100))
             
             plt.legend(bbox_to_anchor = (1.05, 1), loc = 'upper left')
             
