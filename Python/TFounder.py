@@ -1,7 +1,10 @@
 import numpy as np
 import random
-import numba
+
 from numba import jit
+from numba import cuda
+from numba import vectorize
+
 from datetime import datetime
 import matplotlib.pyplot as plt
 import xlsxwriter
@@ -11,7 +14,7 @@ import ParticleClass
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the PATIENTS variable
-Generations = 2
+Generations = 3
 
 # this array is called inside the RunPatients function
 # it is an array because if there is increment from the infection cycle from one patient to another,
@@ -38,7 +41,7 @@ ClassOfInitialParticles = 10
 InfectionParticles = 5
 
 # Limite máximo de partículas que quero impor para cada ciclo (linha)	
-MaxParticles = 10000
+MaxParticles = 100000
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -68,6 +71,7 @@ HorizAlign.set_align('center')
 bold = workbook.add_format({'bold': True})
 LastRowAvailable = 0
 
+# set_column(column1, column2, size)
 worksheet.set_column(0, 0, 10)
 worksheet.set_column(13, 13, 5)
 worksheet.set_column(14, 14, 12)
@@ -371,6 +375,7 @@ def PrintOutput(Matrix):
         # fill a line in the Excel file with R0, R1, R2 .... R10
         worksheet.write(LastRowAvailable, R + 2, "R" + str(R), HorizAlign)
         
+    # worksheet.write(Row, Column, String, format)
     worksheet.write(LastRowAvailable, 13, "Cycle", HorizAlign)
     worksheet.write(LastRowAvailable, 14, "Cycle Particles", HorizAlign)
     worksheet.write(LastRowAvailable, 15, "Particles Up", HorizAlign)
@@ -433,22 +438,29 @@ def PrintOutput(Matrix):
                 OutputFile.write("\nParticles Down: " + str(ClassDownParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesDown))
                 OutputFile.write("\n****************************************************** \n")
         
-                #plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
+#                plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
 #                plt.bar(range(Classes), ClassCount, label = 'Cycle ' + str(Cy))
 #                plt.xlabel('R Classes')
 #                plt.ylabel('Number of Particles')
 #                plt.title("Generation " + str(g) + " - Patient " + str(p))
 #                plt.grid(True)
 #                
-                #plt.xticks(np.arange(0, 11, step = 1))
-                #plt.yticks(np.arange(0, 1000, step = 100))
+#                plt.xticks(np.arange(0, 11, step = 1))
+#                plt.yticks(np.arange(0, 1000, step = 100))
             
 #                plt.legend(bbox_to_anchor = (1.05, 1), loc = 'upper left')
 #    
 #                plt.savefig('Gen' + str(g) + 'Patient' + str(p) + 'Cycle' + str(Cy) + '.png', dpi = 200, bbox_inches = 'tight')
 #            
-                #plt.show()
+#                plt.show()
                 
             LastRowAvailable += 1
         
 main()
+
+# TODO fazer gráficos com frequência relativa: porcentagem de partículas em cada classe
+# TODO identificar R máximo recebido na infecção e gerar gráfico boxplot (Fig.14 pré-dissertação).
+# TODO gerar valor de mi (u). Sendo u = número de partículas que um ciclo pode gerar para o próximo (Fig13 pré-dissertação).
+# TODO Colocar opção de infectar paciente sempre com partículas das classes mais altas.
+# TODO sortear o ciclo em que ocorre a infecção.  
+# TODO atribuir probabilidades para faixas de valores de ciclos de transmissão. 
