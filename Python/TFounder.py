@@ -4,13 +4,14 @@ import numba
 from numba import jit
 from datetime import datetime
 import matplotlib.pyplot as plt
+import xlsxwriter
 
 import ParticleClass
 
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the PATIENTS variable
-Generations = 1
+Generations = 2
 
 # this array is called inside the RunPatients function
 # it is an array because if there is increment from the infection cycle from one patient to another,
@@ -18,7 +19,7 @@ Generations = 1
 InfectionCycle = [ 2, 4, 6, 8 ]
 
 # Number of Patients in Generation 1
-Gen1Patients = 1
+Gen1Patients = 4
 
 # Number of Cycles
 Cycles = 10
@@ -34,10 +35,10 @@ InitialParticles = 5
 
 ClassOfInitialParticles = 10
 
-InfectionParticles = 20
+InfectionParticles = 5
 
 # Limite máximo de partículas que quero impor para cada ciclo (linha)	
-MaxParticles = 1000000
+MaxParticles = 10000
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -57,7 +58,27 @@ DeleteriousIncrement = False
 ClassUpParticles = []
 ClassDownParticles = []
 
+OutputFile = open('Testfile.txt', 'w') 
+
+workbook = xlsxwriter.Workbook('Demo.xlsx')
+worksheet = workbook.add_worksheet()
+HorizAlign = workbook.add_format()
+HorizAlign.set_align('center')
+
+bold = workbook.add_format({'bold': True})
+LastRowAvailable = 0
+
+worksheet.set_column(0, 0, 10)
+worksheet.set_column(13, 13, 5)
+worksheet.set_column(14, 14, 12)
+worksheet.set_column(15, 15, 10)
+worksheet.set_column(16, 16, 13)
+worksheet.set_column(17, 17, 13)
+worksheet.set_column(18, 18, 16)
+
 def main():
+    
+    global LastRowAvailable
     
     print("\nMain function started: " + str(datetime.now()) + "\n")
     startTime = datetime.now()
@@ -133,6 +154,16 @@ def main():
     
     print("\nMain function ended: " + str(datetime.now()) + "\n")
     print("Total run time: " + str(datetime.now() - startTime) + "\n")
+    print("Date: " + str(datetime.now()) + "\n")
+    
+    OutputFile.write("Total run time: " + str(datetime.now() - startTime) + "\n")
+    OutputFile.write("Date: " + str(datetime.now()) + "\n")
+    OutputFile.close()
+    
+    # worksheet.write(Row, Column, String, format)
+    worksheet.write(LastRowAvailable, 0, "Total run time: " + str(datetime.now() - startTime), bold)
+    worksheet.write(LastRowAvailable + 1, 0, "Date: " + str(datetime.now()), bold)
+    workbook.close()
 
 def FillDeleteriousArray(FirstProbability, SecondProbability, ChangeCycle):
     for i in range(Cycles):
@@ -171,8 +202,10 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
             else:
                 BeneficialProbability[i] = BeneficialProbability[i - 1]
 
-#@jit (parallel = True)
+ 
 def RunPatients(Matrix):
+    
+    global LastRowAvailable
     
     # print("RunPatients function started: " + str(datetime.now()) + "\n")
     
@@ -181,6 +214,9 @@ def RunPatients(Matrix):
     for g in range(Generations):
         for p in range(pow(Gen1Patients, g)): # pow(Gen1Patients, g) gives the generation size
             print("Patient started: GEN " + str(g) + " - P " + str(p))
+            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
+            worksheet.write(LastRowAvailable, 0, "Patient started: GEN " + str(g) + " - P " + str(p))
+            LastRowAvailable += 1
             
             for Cy in range(Cycles):
                 
@@ -208,8 +244,8 @@ def RunPatients(Matrix):
 					    # print which Cycle was finished just to give user feedback, because it may take too long to run.
 					    #print("Cycles processed: " + str(Cy));
 					    #print("Patients processed: GEN " + str(g) + " - P " + str(p));
-                        
-#@jit 
+      
+                
 def ApplyMutationsProbabilities(Matrix, g, p, Cy):
     # This function will apply three probabilities: Deleterious, Beneficial or Neutral.
     # Their roles is to simulate real mutations of virus genome.
@@ -245,7 +281,7 @@ def ApplyMutationsProbabilities(Matrix, g, p, Cy):
     ClassUpParticles[g][p][Cy] = UpParticles
     ClassDownParticles[g][p][Cy] = DownParticles
 
-@jit
+
 def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
     
     if(len(Matrix[g][p][Cy]) > MaxParticles):
@@ -256,7 +292,7 @@ def CutOffMaxParticlesPerCycle(Matrix, g, p, Cy):
     
         Matrix[g][p][Cy] = rndParticles
 
-@jit
+#@jit
 def PickRandomParticlesForInfection(Matrix, g, p, Cy):
     
     NoParticlesForInfection = False
@@ -278,11 +314,14 @@ def PickRandomParticlesForInfection(Matrix, g, p, Cy):
     # if there are no particles for infection, there is no infection
     if (NoParticlesForInfection):
         print("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.")
+        OutputFile.write("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.") 
         
     else:
         InfectPatients(Matrix, InfectedParticles, g, p, Cy)
     
 def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
+    
+    global LastRowAvailable
     
     PatientsToInfect = [0] * Gen1Patients
     
@@ -308,17 +347,39 @@ def InfectPatients(Matrix, InfectedParticles, g, p, Cy):
         # one that infected the patient
         Matrix[g + 1][patient][0].append(ParticleClass.Particle(particle.R))
         
-    print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient))
+    print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
+    OutputFile.write("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy) + "\n") 
+    
+    worksheet.write(LastRowAvailable, 0, "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
+    LastRowAvailable += 1
 
 def PrintOutput(Matrix):
+    
+    global LastRowAvailable
     
     PercentageOfParticlesUp = 0.0
     PercentageOfParticlesDown = 0.0
     
-    # TODO needs code to write output to txt file
-    
     # Formatting Output for the Console screen. 
     print("\n \t\t\tR0\tR1\tR2\tR3\tR4\tR5\tR6\tR7\tR8\tR9\tR10 ")
+    
+    OutputFile.write("\t\t\tR0\tR1\tR2\tR3\tR4\tR5\tR6\tR7\tR8\tR9\tR10 \n") 
+    
+    LastRowAvailable += 1
+    
+    for R in range(Classes):
+        # fill a line in the Excel file with R0, R1, R2 .... R10
+        worksheet.write(LastRowAvailable, R + 2, "R" + str(R), HorizAlign)
+        
+    worksheet.write(LastRowAvailable, 13, "Cycle", HorizAlign)
+    worksheet.write(LastRowAvailable, 14, "Cycle Particles", HorizAlign)
+    worksheet.write(LastRowAvailable, 15, "Particles Up", HorizAlign)
+    worksheet.write(LastRowAvailable, 16, "Particles Up - %", HorizAlign)
+    worksheet.write(LastRowAvailable, 17, "Particles Down", HorizAlign)
+    worksheet.write(LastRowAvailable, 18, "Particles Down - %", HorizAlign)
+        
+    LastRowAvailable += 1
+    worksheet.freeze_panes(LastRowAvailable, 0)
 
     for g in range(Generations):
         for p in range(pow(Gen1Patients, g)):
@@ -340,29 +401,54 @@ def PrintOutput(Matrix):
                 else:
                     PercentageOfParticlesUp = 0.0
                     PercentageOfParticlesDown = 0.0
+                
+                if(Cy == 0):
+                    worksheet.write(LastRowAvailable, 0, "Generation")
+                    worksheet.write(LastRowAvailable, 1, g, HorizAlign)
+                    worksheet.write(LastRowAvailable + 1, 0, "Patient")
+                    worksheet.write(LastRowAvailable + 1, 1, p, HorizAlign)
+                
+                for R in range(Classes):
+                    # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
+                    worksheet.write(LastRowAvailable, R + 2, ClassCount[R], HorizAlign)
                     
-                print(Line)
-                print("\nSoma do ciclo " + str(Cy) + ": " + str(len(Matrix[g][p][Cy])))
-                print("Particles Up: " + str(ClassUpParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesUp))
-                print("Particles Down: " + str(ClassDownParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesDown) + "\n")
+                worksheet.write(LastRowAvailable, 13, Cy, HorizAlign)
+                worksheet.write(LastRowAvailable, 14, len(Matrix[g][p][Cy]), HorizAlign)
+                worksheet.write(LastRowAvailable, 15, ClassUpParticles[g][p][Cy], HorizAlign)
+                worksheet.write(LastRowAvailable, 16, PercentageOfParticlesUp, HorizAlign)
+                worksheet.write(LastRowAvailable, 17, ClassDownParticles[g][p][Cy], HorizAlign)
+                worksheet.write(LastRowAvailable, 18, PercentageOfParticlesDown, HorizAlign)
+                    
+                LastRowAvailable += 1
+                
+#                print(Line)
+#                print("\nSoma do ciclo " + str(Cy) + ": " + str(len(Matrix[g][p][Cy])))
+#                print("Particles Up: " + str(ClassUpParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesUp))
+#                print("Particles Down: " + str(ClassDownParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesDown))
+#                print("******************************************************")
             
-                #plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
-                plt.bar(range(Classes), ClassCount, label = 'Cycle ' + str(Cy))
-            
-            print("\n****************************************************** \n")
+                OutputFile.write(Line)
+                OutputFile.write("\nSoma do ciclo " + str(Cy) + ": " + str(len(Matrix[g][p][Cy])))
+                OutputFile.write("\nParticles Up: " + str(ClassUpParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesUp))
+                OutputFile.write("\nParticles Down: " + str(ClassDownParticles[g][p][Cy]) + " - " + str(PercentageOfParticlesDown))
+                OutputFile.write("\n****************************************************** \n")
         
-            plt.xlabel('R Classes')
-            plt.ylabel('Number of Particles')
-            plt.title("Generation " + str(g) + " - Patient " + str(p))
-            plt.grid(True)
+                #plt.plot(ClassCount, label = 'Cycle ' + str(Cy))
+#                plt.bar(range(Classes), ClassCount, label = 'Cycle ' + str(Cy))
+#                plt.xlabel('R Classes')
+#                plt.ylabel('Number of Particles')
+#                plt.title("Generation " + str(g) + " - Patient " + str(p))
+#                plt.grid(True)
+#                
+                #plt.xticks(np.arange(0, 11, step = 1))
+                #plt.yticks(np.arange(0, 1000, step = 100))
             
-            #plt.xticks(np.arange(0, 11, step = 1))
-            #plt.yticks(np.arange(0, 1000, step = 100))
-            
-            plt.legend(bbox_to_anchor = (1.05, 1), loc = 'upper left')
-            
-            plt.savefig('Gen' + str(g) + 'Patient' + str(p) + '.png', dpi = 200, bbox_inches = 'tight')
-            
-            plt.show()
+#                plt.legend(bbox_to_anchor = (1.05, 1), loc = 'upper left')
+#    
+#                plt.savefig('Gen' + str(g) + 'Patient' + str(p) + 'Cycle' + str(Cy) + '.png', dpi = 200, bbox_inches = 'tight')
+#            
+                #plt.show()
+                
+            LastRowAvailable += 1
         
 main()
