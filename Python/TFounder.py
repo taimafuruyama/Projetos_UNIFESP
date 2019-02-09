@@ -464,3 +464,4 @@ main()
 # TODO Colocar opção de infectar paciente sempre com partículas das classes mais altas.
 # TODO sortear o ciclo em que ocorre a infecção.  
 # TODO atribuir probabilidades para faixas de valores de ciclos de transmissão. 
+# TODO fazer um resumo de dados informando qual foi o paciente máximo com partículas virais dentro dele e qual o total de pacientes popssíveis.
