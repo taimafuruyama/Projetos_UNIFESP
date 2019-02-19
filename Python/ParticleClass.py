@@ -7,16 +7,13 @@ Created on Tue Jan  8 23:42:45 2019
 
 class Particle():
     
-    ParticleAmount = 0 # amount of particles at any given time during runtime
-    ParticleIdCounter = 0 # amount of ID generateds. It is the total number of particles generated
+    __slots__ = ('R')
     
     def __init__(self, RClass):
-        self.R = RClass # R Class from R0 to R10. But self.Class is an INT
+        self.R = RClass # R Class from R0 to R10. self.Class is an INT
         
-        Particle.ParticleAmount += 1
-        Particle.ParticleIdCounter += 1
-        
-        self.id = Particle.ParticleIdCounter
+#        self.id = ID
+#        self.id = Particle.ParticleIdCounter
         
     def RaiseClass(self):
         
@@ -30,7 +27,3 @@ class Particle():
             
         else:
             self.R = self.R - 1
-        
-    def __del__(self):
-        Particle.ParticleAmount -= 1
-        #print("deleted")
