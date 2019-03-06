@@ -9,7 +9,7 @@ import xlsxwriter
 import xlrd
 import statistics
 
-Cycles = 10
+Cycles = 100
 Classes = 11
 
 def main():
@@ -29,7 +29,7 @@ def main():
     
     LastRowAvailable += 1
     
-    for root, dirs, files in os.walk('C:\Taima_Furuyama\Mestrado_UNIFESP\Programacao\Python\Simulacoes\TestesEstatisticos\SemCutOff_100Cycles'):
+    for root, dirs, files in os.walk('C:\Taima_Furuyama\Mestrado_UNIFESP\Programacao\Python\Simulacoes\TestesEstatisticos\ENVELOPE'):
         SourceFiles = [ _ for _ in files if _.endswith('.xlsx') ]
         
         NumberOfFiles = len(SourceFiles)
@@ -43,8 +43,8 @@ def main():
             
             for Cycle in range(Cycles): #Ciclos                
                 for Class in range(Classes): #Classes R   
-                    RParticles = SourceSheet.cell_value(rowx = Cycle + 15, colx = Class + 2)
-                    CycleTotal = SourceSheet.cell_value(rowx = Cycle + 15, colx = 14)
+                    RParticles = SourceSheet.cell_value(rowx = Cycle + 1, colx = Class + 8)
+                    CycleTotal = SourceSheet.cell_value(rowx = Cycle + 1, colx = 1)
                                     
                     Percent = (RParticles/CycleTotal)*100
                     
@@ -59,6 +59,7 @@ def main():
         StdDevArray = [[None for x in range(Classes)] for y in range(Cycles)]
         MinArray = [[None for x in range(Classes)] for y in range(Cycles)]
         MaxArray = [[None for x in range(Classes)] for y in range(Cycles)]
+        VarArray = [[None for x in range(Classes)] for y in range(Cycles)]
         
 #        print(MeanArray)
             
@@ -84,6 +85,10 @@ def main():
             MaxArray[Cycle].pop(0)
             Max = max(PercentArray[Cycle][Class])
             MaxArray[Cycle].append(Max)
+            
+            VarArray[Cycle].pop(0)
+            Var = statistics.pvariance(PercentArray[Cycle][Class])
+            VarArray[Cycle].append(Var)
                 
 #    print(MeanArray)
 #    print(MedianArray)
@@ -101,14 +106,16 @@ def main():
             worksheet.write(LastRowAvailable + 2, 1, "StdDev")
             worksheet.write(LastRowAvailable + 3, 1, "Min")
             worksheet.write(LastRowAvailable + 4, 1, "Max")
+            worksheet.write(LastRowAvailable + 5, 1, "Var")
             
             worksheet.write(LastRowAvailable, Class + 2, MeanArray[Cycle][Class])
             worksheet.write(LastRowAvailable + 1, Class + 2, MedianArray[Cycle][Class])
             worksheet.write(LastRowAvailable + 2, Class + 2, StdDevArray[Cycle][Class])
             worksheet.write(LastRowAvailable + 3, Class + 2, MinArray[Cycle][Class])
-            worksheet.write(LastRowAvailable + 4, Class + 2, MaxArray[Cycle][Class])       
+            worksheet.write(LastRowAvailable + 4, Class + 2, MaxArray[Cycle][Class])  
+            worksheet.write(LastRowAvailable + 5, Class + 2, VarArray[Cycle][Class]) 
             
-        LastRowAvailable += 5
+        LastRowAvailable += 6
         
     workbook.close()
 
