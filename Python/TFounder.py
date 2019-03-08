@@ -8,16 +8,13 @@ import ParticleClass
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 1
-
-# this array is called inside the RunSimulation function
-InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
+Generations = 3
 
 # Number of Patients in Generation 1
 Gen1Patients = 4
 
 # Number of Cycles
-Cycles = 100
+Cycles = 50
 
 # Number of Classes
 Classes = 11
@@ -32,9 +29,29 @@ ClassOfInitialParticles = 10
 
 InfectionParticles = 5
 
+# array of strings to store when infection occurs, so that it can be written to output
+InfectionWarnings = []
+
+# this array is called inside the RunSimulation function
+NumberOfInfectionCycles = 4
+
+# 0-10 - 50%
+# 11-20 - 25%
+# 21-30 - 15%
+# 31-50 - 10%
+DrawIntervals = {10: 50, 20: 25, 30: 15, 50: 10}
+DrawIntervalsKeys = list(DrawIntervals.keys())
+
+InfectionCycle = {}
+#InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
+
+CyclesForDrawing = [] # an array with CYCLES number of values, from 0 to CYCLES
+DrawingWeights = [] # an array with CYCLES number of values, each one is a weight for the respective cycle
+DrawnCycles = [] # an array the size of NumberOfInfectionCycles
+
 # Max particles per cycle	
 MaxParticles = 1000000
-MakeCutOff = False
+MakeCutOff = True
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -58,7 +75,6 @@ ChangeCycle = 8
 # Lists to keep the number of particles that go up or down the classes, during mutations
 # So, for example, the list ClassUpParticle[0][1, 4] will keep the number of particles
 # that went up 1 class, in GENERATION 0, PATIENT 1, CYCLE 4
-
 ClassUpParticles = []
 ClassDownParticles = []
 
@@ -259,6 +275,10 @@ def RunSimulation():
     
     global LastPatient
     
+    # Populates the CyclesForDrawing array with number of cycles
+    for i in range(Cycles):
+        CyclesForDrawing.append(i)
+    
 #    pool = multiprocessing.Pool(multiprocessing.cpu_count())
     
     # print("RunSimulation function started: " + str(datetime.now()) + "\n")
@@ -271,6 +291,10 @@ def RunSimulation():
 #            SaveData(g, p, Cycles - 1)
             Matrix[g][p].clear()
             LastPatient = 0
+            DrawingWeights.clear()
+            InfectionWarnings.clear()
+            
+        LastPatient = -1
             
 #        pool.map(RunPatient, [(g, 0), (g, 1), (g, 2), (g, 3)])    
       
@@ -283,9 +307,32 @@ def RunPatient(g, p):
     worksheet.write(LastRowAvailable + 1, 0, "Patient started: GEN " + str(g) + " - P " + str(p))
     LastRowAvailable += 1
     
+#    if g < (Generations - 1):
+#        for i in range(1, NumberOfInfectionCycles + 1):
+#            InfectionCycle[i] = random.randint(1, Cycles)
+#            
+#        print(p, InfectionCycle)
+        
+    for i in range(Cycles):
+        if i <= DrawIntervalsKeys[0]:
+            DrawingWeights.append(DrawIntervals[10])
+        elif i > DrawIntervalsKeys[0] and i <= DrawIntervalsKeys[1]:
+            DrawingWeights.append(DrawIntervals[20])
+        elif i > DrawIntervalsKeys[1] and i <= DrawIntervalsKeys[2]:
+            DrawingWeights.append(DrawIntervals[30])
+        else:
+            DrawingWeights.append(DrawIntervals[50])
+            
+#    print(DrawingWeights)
+        
+    DrawnCycles = random.choices(CyclesForDrawing, DrawingWeights, k = NumberOfInfectionCycles)
+    
+    for i in range(1, NumberOfInfectionCycles + 1):
+        InfectionCycle[i] = DrawnCycles[i - 1]
+    
     for Cy in range(Cycles):
         
-        print(Cy)
+#        print(Cy)
                 
         if(Cy > 0):
             Matrix[g][p].append([]) # adds 1 cycle
@@ -403,6 +450,8 @@ def PickRandomParticlesForInfection(g, p, Cy, cycleForInfection):
     if (NoParticlesForInfection):
         print("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.")
         OutputFile.write("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.") 
+        text = "G" + str(g) + " " + "P" + str(p) + " Cycle " + str(Cy) + " has no particles."
+        InfectionWarnings.append(text)
         
     else:
         InfectPatients(InfectedParticles, g, p, Cy,cycleForInfection)
@@ -438,11 +487,15 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
     print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
     OutputFile.write("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy) + "\n") 
     
+    text = "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy)
+    InfectionWarnings.append(text)
 #    worksheet.write(LastRowAvailable, 0, "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
 #    LastRowAvailable += 1
 
 def SaveData(g, p, Cy):
     global LastRowAvailable, LastPatient
+    
+    Mi = 0
     
     PercentageOfParticlesUp = 0.0
     PercentageOfParticlesDown = 0.0
@@ -453,14 +506,17 @@ def SaveData(g, p, Cy):
     
         for R in range(Classes):
             # fill a line in the Excel file with R0, R1, R2 .... R10
-            worksheet.write(LastRowAvailable, R + 2, "R" + str(R), HorizAlign)
+            worksheet.write(LastRowAvailable, R + 3, "R" + str(R), HorizAlign)
             
-        worksheet.write(LastRowAvailable, 13, "Cycle", HorizAlign)
+        worksheet.write(LastRowAvailable, 2, "Cycle", HorizAlign)
         worksheet.write(LastRowAvailable, 14, "Cycle Particles", HorizAlign)
-        worksheet.write(LastRowAvailable, 15, "Particles Up", HorizAlign)
-        worksheet.write(LastRowAvailable, 16, "Particles Up - %", HorizAlign)
-        worksheet.write(LastRowAvailable, 17, "Particles Down", HorizAlign)
-        worksheet.write(LastRowAvailable, 18, "Particles Down - %", HorizAlign)
+        worksheet.write(LastRowAvailable, 15, "Mi", HorizAlign)
+        
+        
+        worksheet.write(LastRowAvailable, 16, "Particles Up", HorizAlign)
+        worksheet.write(LastRowAvailable, 17, "Particles Up - %", HorizAlign)
+        worksheet.write(LastRowAvailable, 18, "Particles Down", HorizAlign)
+        worksheet.write(LastRowAvailable, 19, "Particles Down - %", HorizAlign)
 
         LastRowAvailable += 1
            
@@ -481,21 +537,61 @@ def SaveData(g, p, Cy):
         worksheet.write(LastRowAvailable, 1, g, HorizAlign)
         worksheet.write(LastRowAvailable + 1, 0, "Patient")
         worksheet.write(LastRowAvailable + 1, 1, p, HorizAlign)
+        
+        MaxR = GetMaxR(ClassCount)
+        worksheet.write(LastRowAvailable + 2, 0, "Max R at Cycle 0")
+        worksheet.write(LastRowAvailable + 2, 1, MaxR, HorizAlign)
     
     for R in range(Classes):
         # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
-        worksheet.write(LastRowAvailable, R + 2, ClassCount[R], HorizAlign)
+        worksheet.write(LastRowAvailable, R + 3, ClassCount[R], HorizAlign)
         
-    worksheet.write(LastRowAvailable, 13, Cy, HorizAlign)
+    worksheet.write(LastRowAvailable, 2, Cy, HorizAlign)
     worksheet.write(LastRowAvailable, 14, len(Matrix[g][p][Cy]), HorizAlign)
-    worksheet.write(LastRowAvailable, 15, ClassUpParticles[g][p][Cy], HorizAlign)
-    worksheet.write(LastRowAvailable, 16, PercentageOfParticlesUp, HorizAlign)
-    worksheet.write(LastRowAvailable, 17, ClassDownParticles[g][p][Cy], HorizAlign)
-    worksheet.write(LastRowAvailable, 18, PercentageOfParticlesDown, HorizAlign)
+    
+    Mi = GetMi(ClassCount, len(Matrix[g][p][Cy]))
+    worksheet.write(LastRowAvailable, 15, Mi, HorizAlign)
+        
+    worksheet.write(LastRowAvailable, 16, ClassUpParticles[g][p][Cy], HorizAlign)
+    worksheet.write(LastRowAvailable, 17, PercentageOfParticlesUp, HorizAlign)
+    worksheet.write(LastRowAvailable, 18, ClassDownParticles[g][p][Cy], HorizAlign)
+    worksheet.write(LastRowAvailable, 19, PercentageOfParticlesDown, HorizAlign)
         
 #    LastRowAvailable += 1
     
+    if Cy == Cycles - 1:
+        for i in range(len(InfectionWarnings)):
+            worksheet.write((LastRowAvailable - Cycles) + 5 + i, 0, InfectionWarnings[i])
+    
     LastPatient = p
+    
+def GetMi(ClassCount, CycleParticles):
+    
+    # ClassCount = number of particles per cycle, in a 11 position array
+    
+    MaxPotentialParticles = 0
+    
+    for R in range(Classes):
+        MaxPotentialParticles += ClassCount[R] * R
+    
+    if CycleParticles != 0:
+        Mi = MaxPotentialParticles/CycleParticles
+    else:
+        Mi = 0
+    
+    return Mi
+    
+def GetMaxR(ClassCount):
+    
+    # ClassCount = number of particles per cycle, in a 11 position array
+    
+    MaxR = 0
+    
+    for R in range(Classes):
+         if ClassCount[R] > 0:
+             MaxR = R
+             
+    return MaxR
             
 def memory():
     import os
@@ -527,9 +623,6 @@ def IdentifyMachine():
 main()
 
 # TODO fazer gráficos com frequência relativa: porcentagem de partículas em cada classe
-# TODO identificar R máximo recebido na infecção e gerar gráfico boxplot (Fig.14 pré-dissertação).
-# TODO gerar valor de mi (u). Sendo u = número de partículas que um ciclo pode gerar para o próximo (Fig13 pré-dissertação).
+# TODO gerar gráfico boxplot com R Max (Fig.14 pré-dissertação).
 # TODO Colocar opção de infectar paciente sempre com partículas das classes mais altas.
-# TODO sortear o ciclo em que ocorre a infecção.  
-# TODO atribuir probabilidades para faixas de valores de ciclos de transmissão. 
 # TODO fazer um resumo de dados informando qual foi o paciente máximo com partículas virais dentro dele e qual o total de pacientes popssíveis.
