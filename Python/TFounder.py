@@ -8,7 +8,7 @@ import ParticleClass
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 8
+Generations = 1
 
 # this array is called inside the RunSimulation function
 InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
@@ -17,7 +17,7 @@ InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
 Gen1Patients = 4
 
 # Number of Cycles
-Cycles = 10
+Cycles = 100
 
 # Number of Classes
 Classes = 11
@@ -34,6 +34,7 @@ InfectionParticles = 5
 
 # Max particles per cycle	
 MaxParticles = 1000000
+MakeCutOff = False
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -42,15 +43,17 @@ BeneficialProbability = [0] * Cycles
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 BeneficialIncrement = False
 
-FirstBeneficial = 0.0003
+FirstBeneficial = 0.0008
 SecondBeneficial = 0.0008
 
 # if TRUE, deleterious probability will increase by INCREMENT each cycle
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 DeleteriousIncrement = False
 
-FirstDeleterious = 0.3
+FirstDeleterious = 0.8
 SecondDeleterious = 0.8
+
+ChangeCycle = 8
 
 # Lists to keep the number of particles that go up or down the classes, during mutations
 # So, for example, the list ClassUpParticle[0][1, 4] will keep the number of particles
@@ -69,6 +72,7 @@ HorizAlign.set_align('center')
 
 bold = workbook.add_format({'bold': True})
 LastRowAvailable = 0
+LastPatient = -1
 
 # set_column(column1, column2, size)
 worksheet.set_column(0, 0, 20)
@@ -78,6 +82,9 @@ worksheet.set_column(15, 15, 10)
 worksheet.set_column(16, 16, 13)
 worksheet.set_column(17, 17, 13)
 worksheet.set_column(18, 18, 16)
+
+worksheet.write(3, 5, "Cut Off Function", bold)
+worksheet.write(4, 5, str(MakeCutOff), bold)
 
 worksheet.write(LastRowAvailable, 0, "Generations", bold)
 worksheet.write(LastRowAvailable, 1, Generations)
@@ -103,12 +110,22 @@ LastRowAvailable += 1
 worksheet.write(LastRowAvailable, 0, "MaxParticles", bold)
 worksheet.write(LastRowAvailable, 1, MaxParticles)
 LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Deleterious Probability", bold)
-worksheet.write(LastRowAvailable, 1, FirstDeleterious)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Beneficial Probability", bold)
+worksheet.write(LastRowAvailable, 0, "First Beneficial", bold)
 worksheet.write(LastRowAvailable, 1, FirstBeneficial)
 LastRowAvailable += 1
+worksheet.write(LastRowAvailable, 0, "Second Beneficial", bold)
+worksheet.write(LastRowAvailable, 1, SecondBeneficial)
+LastRowAvailable += 1
+worksheet.write(LastRowAvailable, 0, "First Deleterious", bold)
+worksheet.write(LastRowAvailable, 1, FirstDeleterious)
+LastRowAvailable += 1
+worksheet.write(LastRowAvailable, 0, "Second Deleterious", bold)
+worksheet.write(LastRowAvailable, 1, SecondDeleterious)
+LastRowAvailable += 1
+worksheet.write(LastRowAvailable, 0, "Change Cycle", bold)
+worksheet.write(LastRowAvailable, 1, ChangeCycle)
+LastRowAvailable += 1
+
 
 # TODO place a TAB Summary and a TAB results in the Excel workbook 
 
@@ -156,7 +173,7 @@ def main():
         # SECOND PARAMENTER: increment
 
     else:
-        FillDeleteriousArray(FirstDeleterious, SecondDeleterious, 8)
+        FillDeleteriousArray(FirstDeleterious, SecondDeleterious, ChangeCycle)
         # FIRST PARAMETER: first probability
         # SECOND PARAMENTER: second probability
         # THIRD PARAMETER: cycle to change from first probability to second probability
@@ -167,7 +184,7 @@ def main():
         # SECOND PARAMENTER: increment
 
     else:
-        FillBeneficialArray(FirstBeneficial, SecondBeneficial, 8)
+        FillBeneficialArray(FirstBeneficial, SecondBeneficial, ChangeCycle)
         # FIRST PARAMETER: first probability
         # SECOND PARAMENTER: second probability
         # THIRD PARAMETER: cycle to change from first probability to second probability
@@ -240,6 +257,8 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
  
 def RunSimulation():
     
+    global LastPatient
+    
 #    pool = multiprocessing.Pool(multiprocessing.cpu_count())
     
     # print("RunSimulation function started: " + str(datetime.now()) + "\n")
@@ -249,8 +268,9 @@ def RunSimulation():
     for g in range(Generations):
         for p in range(pow(Gen1Patients, g)): # pow(Gen1Patients, g) gives the generation size
             RunPatient(g, p) 
-            SaveData(g, p)
+#            SaveData(g, p, Cycles - 1)
             Matrix[g][p].clear()
+            LastPatient = 0
             
 #        pool.map(RunPatient, [(g, 0), (g, 1), (g, 2), (g, 3)])    
       
@@ -264,6 +284,8 @@ def RunPatient(g, p):
     LastRowAvailable += 1
     
     for Cy in range(Cycles):
+        
+        print(Cy)
                 
         if(Cy > 0):
             Matrix[g][p].append([]) # adds 1 cycle
@@ -271,23 +293,26 @@ def RunPatient(g, p):
             ClassUpParticles[g][p].append([]) # adds 1 cycle
             ClassDownParticles[g][p].append([]) # adds 1 cycle
             
-            for i in range(len(Matrix[g][p][Cy - 1])):
-                
-                if len(Matrix[g][p][Cy]) <= MaxParticles:
-                    RandomParticle = random.random()
-                    RandomParticle = int(RandomParticle * len(Matrix[g][p][Cy - 1]))
-#                    print(RandomNumber, len(Matrix[g][p][Cy - 1]))
-                    
-                    particle = Matrix[g][p][Cy - 1][RandomParticle]
-                    
+            if MakeCutOff:
+                for particle in Matrix[g][p][Cy - 1]: # takes 1 particle from previous cycle
                     for i in range(particle.R): # creates N new particles, based on the R class
                         Matrix[g][p][Cy].append(ParticleClass.Particle(particle.R))
+                        
+                CutOffMaxParticlesPerCycle(g, p, Cy)
                 
-#            for particle in Matrix[g][p][Cy - 1]: # takes 1 particle from previous cycle
-#                for i in range(particle.R): # creates N new particles, based on the R class
-#                    Matrix[g][p][Cy].append(ParticleClass.Particle(particle.R))
-#        
-#        CutOffMaxParticlesPerCycle(g, p, Cy)
+            else:
+                for i in range(len(Matrix[g][p][Cy - 1])):
+                    
+                    if len(Matrix[g][p][Cy]) <= MaxParticles:
+                        RandomParticle = random.random()
+                        RandomParticle = int(RandomParticle * len(Matrix[g][p][Cy - 1]))
+    #                    print(RandomNumber, len(Matrix[g][p][Cy - 1]))
+                        
+                        particle = Matrix[g][p][Cy - 1][RandomParticle]
+                        
+                        for i in range(particle.R): # creates N new particles, based on the R class
+                            Matrix[g][p][Cy].append(ParticleClass.Particle(particle.R))
+                
         ApplyMutationsProbabilities(g, p, Cy)
         
         #print("Cycle " + str(Cy) + " " + str(Matrix[g][p, Cy]))
@@ -301,6 +326,11 @@ def RunPatient(g, p):
             if  Cy == InfectionCycle[cycle] and g < (Generations - 1):
                 # here we are passing cycle as the key, not the value
                 PickRandomParticlesForInfection(g, p, Cy, cycle) 
+                
+        SaveData(g, p, Cy)
+        
+        if Cy > 0:
+            Matrix[g][p][Cy - 1].clear()
                 
         #print which Cycle was finished just to give user feedback, because it may take too long to run.
 	    #print("Cycles processed: " + str(Cy));
@@ -408,67 +438,64 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
     print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
     OutputFile.write("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy) + "\n") 
     
-    worksheet.write(LastRowAvailable, 0, "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
-    LastRowAvailable += 1
+#    worksheet.write(LastRowAvailable, 0, "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
+#    LastRowAvailable += 1
 
-def SaveData(g, p):
-    global LastRowAvailable
+def SaveData(g, p, Cy):
+    global LastRowAvailable, LastPatient
     
     PercentageOfParticlesUp = 0.0
     PercentageOfParticlesDown = 0.0
     
     LastRowAvailable += 1
     
-    for R in range(Classes):
-        # fill a line in the Excel file with R0, R1, R2 .... R10
-        worksheet.write(LastRowAvailable, R + 2, "R" + str(R), HorizAlign)
-        
-    worksheet.write(LastRowAvailable, 13, "Cycle", HorizAlign)
-    worksheet.write(LastRowAvailable, 14, "Cycle Particles", HorizAlign)
-    worksheet.write(LastRowAvailable, 15, "Particles Up", HorizAlign)
-    worksheet.write(LastRowAvailable, 16, "Particles Up - %", HorizAlign)
-    worksheet.write(LastRowAvailable, 17, "Particles Down", HorizAlign)
-    worksheet.write(LastRowAvailable, 18, "Particles Down - %", HorizAlign)
-
-    LastRowAvailable += 1
+    if LastPatient != p:
     
-    for Cy in range(Cycles):
-                
-        Line = "G " + str(g) + " P " + str(p) + " Cycle " + str(Cy) + "\t\t"
-        
-        ClassCount = [0] * Classes # R Classes from 0 to 10
-        
-        for particle in Matrix[g][p][Cy]:
-            ClassCount[particle.R] += 1 # R Class 10 actually goes to array position 11
-        
-        for Cl in range(Classes):
-            Line += str(ClassCount[Cl]) + "\t"
-        
-        if(len(Matrix[g][p][Cy]) > 0):
-            PercentageOfParticlesUp = (ClassUpParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
-            PercentageOfParticlesDown = (ClassDownParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
-        else:
-            PercentageOfParticlesUp = 0.0
-            PercentageOfParticlesDown = 0.0
-        
-        if(Cy == 0):
-            worksheet.write(LastRowAvailable, 0, "Generation")
-            worksheet.write(LastRowAvailable, 1, g, HorizAlign)
-            worksheet.write(LastRowAvailable + 1, 0, "Patient")
-            worksheet.write(LastRowAvailable + 1, 1, p, HorizAlign)
-        
         for R in range(Classes):
-            # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
-            worksheet.write(LastRowAvailable, R + 2, ClassCount[R], HorizAlign)
+            # fill a line in the Excel file with R0, R1, R2 .... R10
+            worksheet.write(LastRowAvailable, R + 2, "R" + str(R), HorizAlign)
             
-        worksheet.write(LastRowAvailable, 13, Cy, HorizAlign)
-        worksheet.write(LastRowAvailable, 14, len(Matrix[g][p][Cy]), HorizAlign)
-        worksheet.write(LastRowAvailable, 15, ClassUpParticles[g][p][Cy], HorizAlign)
-        worksheet.write(LastRowAvailable, 16, PercentageOfParticlesUp, HorizAlign)
-        worksheet.write(LastRowAvailable, 17, ClassDownParticles[g][p][Cy], HorizAlign)
-        worksheet.write(LastRowAvailable, 18, PercentageOfParticlesDown, HorizAlign)
-            
+        worksheet.write(LastRowAvailable, 13, "Cycle", HorizAlign)
+        worksheet.write(LastRowAvailable, 14, "Cycle Particles", HorizAlign)
+        worksheet.write(LastRowAvailable, 15, "Particles Up", HorizAlign)
+        worksheet.write(LastRowAvailable, 16, "Particles Up - %", HorizAlign)
+        worksheet.write(LastRowAvailable, 17, "Particles Down", HorizAlign)
+        worksheet.write(LastRowAvailable, 18, "Particles Down - %", HorizAlign)
+
         LastRowAvailable += 1
+           
+    ClassCount = [0] * Classes # R Classes from 0 to 10
+    
+    for particle in Matrix[g][p][Cy]:
+        ClassCount[particle.R] += 1 # R Class 10 actually goes to array position 11
+    
+    if(len(Matrix[g][p][Cy]) > 0):
+        PercentageOfParticlesUp = (ClassUpParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
+        PercentageOfParticlesDown = (ClassDownParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
+    else:
+        PercentageOfParticlesUp = 0.0
+        PercentageOfParticlesDown = 0.0
+    
+    if(Cy == 0):
+        worksheet.write(LastRowAvailable, 0, "Generation")
+        worksheet.write(LastRowAvailable, 1, g, HorizAlign)
+        worksheet.write(LastRowAvailable + 1, 0, "Patient")
+        worksheet.write(LastRowAvailable + 1, 1, p, HorizAlign)
+    
+    for R in range(Classes):
+        # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
+        worksheet.write(LastRowAvailable, R + 2, ClassCount[R], HorizAlign)
+        
+    worksheet.write(LastRowAvailable, 13, Cy, HorizAlign)
+    worksheet.write(LastRowAvailable, 14, len(Matrix[g][p][Cy]), HorizAlign)
+    worksheet.write(LastRowAvailable, 15, ClassUpParticles[g][p][Cy], HorizAlign)
+    worksheet.write(LastRowAvailable, 16, PercentageOfParticlesUp, HorizAlign)
+    worksheet.write(LastRowAvailable, 17, ClassDownParticles[g][p][Cy], HorizAlign)
+    worksheet.write(LastRowAvailable, 18, PercentageOfParticlesDown, HorizAlign)
+        
+#    LastRowAvailable += 1
+    
+    LastPatient = p
             
 def memory():
     import os
@@ -484,18 +511,18 @@ def IdentifyMachine():
     try:
         import cpuinfo
         print("CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
-        worksheet.write(4, 5, "CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
+        worksheet.write(6, 5, "CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
     except:
         print("No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
-        worksheet.write(4, 5, "No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
+        worksheet.write(6, 5, "No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
         
     print("Processor: " + platform.processor())
     print("Architecture (32 or 64 bits): " + platform.machine())
     print("OS: " + platform.platform())
     
-    worksheet.write(5, 5, "Processor: " + platform.processor())
-    worksheet.write(6, 5, "Architecture (32 or 64 bits): " + platform.machine())
-    worksheet.write(7, 5, "OS: " + platform.platform() + "\n")
+    worksheet.write(7, 5, "Processor: " + platform.processor())
+    worksheet.write(8, 5, "Architecture (32 or 64 bits): " + platform.machine())
+    worksheet.write(9, 5, "OS: " + platform.platform() + "\n")
         
 main()
 
