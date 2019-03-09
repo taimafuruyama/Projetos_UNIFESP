@@ -8,13 +8,13 @@ import ParticleClass
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 3
+Generations = 1
 
 # Number of Patients in Generation 1
 Gen1Patients = 4
 
 # Number of Cycles
-Cycles = 50
+Cycles = 10
 
 # Number of Classes
 Classes = 11
@@ -32,6 +32,8 @@ InfectionParticles = 5
 # array of strings to store when infection occurs, so that it can be written to output
 InfectionWarnings = []
 
+InfectionUserDefined = True
+
 # this array is called inside the RunSimulation function
 NumberOfInfectionCycles = 4
 
@@ -43,7 +45,6 @@ DrawIntervals = {10: 50, 20: 25, 30: 15, 50: 10}
 DrawIntervalsKeys = list(DrawIntervals.keys())
 
 InfectionCycle = {}
-#InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
 
 CyclesForDrawing = [] # an array with CYCLES number of values, from 0 to CYCLES
 DrawingWeights = [] # an array with CYCLES number of values, each one is a weight for the respective cycle
@@ -60,14 +61,14 @@ BeneficialProbability = [0] * Cycles
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 BeneficialIncrement = False
 
-FirstBeneficial = 0.0008
+FirstBeneficial = 0.0003
 SecondBeneficial = 0.0008
 
 # if TRUE, deleterious probability will increase by INCREMENT each cycle
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 DeleteriousIncrement = False
 
-FirstDeleterious = 0.8
+FirstDeleterious = 0.3
 SecondDeleterious = 0.8
 
 ChangeCycle = 8
@@ -307,28 +308,26 @@ def RunPatient(g, p):
     worksheet.write(LastRowAvailable + 1, 0, "Patient started: GEN " + str(g) + " - P " + str(p))
     LastRowAvailable += 1
     
-#    if g < (Generations - 1):
-#        for i in range(1, NumberOfInfectionCycles + 1):
-#            InfectionCycle[i] = random.randint(1, Cycles)
-#            
-#        print(p, InfectionCycle)
+    if InfectionUserDefined:
+        InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
         
-    for i in range(Cycles):
-        if i <= DrawIntervalsKeys[0]:
-            DrawingWeights.append(DrawIntervals[10])
-        elif i > DrawIntervalsKeys[0] and i <= DrawIntervalsKeys[1]:
-            DrawingWeights.append(DrawIntervals[20])
-        elif i > DrawIntervalsKeys[1] and i <= DrawIntervalsKeys[2]:
-            DrawingWeights.append(DrawIntervals[30])
-        else:
-            DrawingWeights.append(DrawIntervals[50])
+    else:
+        for i in range(Cycles):
+            if i <= DrawIntervalsKeys[0]:
+                DrawingWeights.append(DrawIntervals[10])
+            elif i > DrawIntervalsKeys[0] and i <= DrawIntervalsKeys[1]:
+                DrawingWeights.append(DrawIntervals[20])
+            elif i > DrawIntervalsKeys[1] and i <= DrawIntervalsKeys[2]:
+                DrawingWeights.append(DrawIntervals[30])
+            else:
+                DrawingWeights.append(DrawIntervals[50])
+                
+#        print(DrawingWeights)
             
-#    print(DrawingWeights)
+        DrawnCycles = random.choices(CyclesForDrawing, DrawingWeights, k = NumberOfInfectionCycles)
         
-    DrawnCycles = random.choices(CyclesForDrawing, DrawingWeights, k = NumberOfInfectionCycles)
-    
-    for i in range(1, NumberOfInfectionCycles + 1):
-        InfectionCycle[i] = DrawnCycles[i - 1]
+        for i in range(1, NumberOfInfectionCycles + 1):
+            InfectionCycle[i] = DrawnCycles[i - 1]
     
     for Cy in range(Cycles):
         
