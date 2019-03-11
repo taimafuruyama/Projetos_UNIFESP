@@ -3,12 +3,11 @@ import random
 from datetime import datetime
 #import matplotlib.pyplot as plt
 import xlsxwriter
-import ParticleClass
 
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 1
+Generations = 3
 
 # Number of Patients in Generation 1
 Gen1Patients = 4
@@ -52,7 +51,6 @@ DrawnCycles = [] # an array the size of NumberOfInfectionCycles
 
 # Max particles per cycle	
 MaxParticles = 1000000
-MakeCutOff = True
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -93,15 +91,12 @@ LastPatient = -1
 
 # set_column(column1, column2, size)
 worksheet.set_column(0, 0, 20)
-worksheet.set_column(13, 13, 5)
+worksheet.set_column(2, 2, 5)
 worksheet.set_column(14, 14, 12)
 worksheet.set_column(15, 15, 10)
 worksheet.set_column(16, 16, 13)
 worksheet.set_column(17, 17, 13)
 worksheet.set_column(18, 18, 16)
-
-worksheet.write(3, 5, "Cut Off Function", bold)
-worksheet.write(4, 5, str(MakeCutOff), bold)
 
 worksheet.write(LastRowAvailable, 0, "Generations", bold)
 worksheet.write(LastRowAvailable, 1, Generations)
@@ -147,6 +142,8 @@ LastRowAvailable += 1
 # TODO place a TAB Summary and a TAB results in the Excel workbook 
 
 def main():
+    
+    global LastRowAvailable
     
     print("\nMain function started: " + str(datetime.now()) + "\n")
     startTime = datetime.now()
@@ -211,7 +208,7 @@ def main():
     # That is: these 5 particles have the potential to create 10 particles each.
 
     for i in range(InitialParticles):
-        Matrix[0][0][0].append(ParticleClass.Particle(ClassOfInitialParticles))
+        Matrix[0][0][0].append(ClassOfInitialParticles)
       
 #    print(Matrix[0][0][0][0])    
 #        
@@ -230,6 +227,7 @@ def main():
     OutputFile.close()
     
     # worksheet.write(Row, Column, String, format)
+    LastRowAvailable += 2
     worksheet.write(LastRowAvailable, 0, "Total run time: " + str(datetime.now() - startTime), bold)
     worksheet.write(LastRowAvailable + 1, 0, "Date: " + str(datetime.now()), bold)
     workbook.close()
@@ -274,7 +272,7 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
  
 def RunSimulation():
     
-    global LastPatient
+    global LastPatient, worksheet, LastRowAvailable
     
     # Populates the CyclesForDrawing array with number of cycles
     for i in range(Cycles):
@@ -288,25 +286,34 @@ def RunSimulation():
     # Each matrix position will bring a value. This value will be mutiplied by its own class number. 
     for g in range(Generations):
         for p in range(pow(Gen1Patients, g)): # pow(Gen1Patients, g) gives the generation size
+            
+            print("Patient started: GEN " + str(g) + " - P " + str(p))
+            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
+            worksheet.write(LastRowAvailable + 1, 0, "Patient started: GEN " + str(g) + " - P " + str(p))
+            LastRowAvailable += 1
+            
             RunPatient(g, p) 
-#            SaveData(g, p, Cycles - 1)
             Matrix[g][p].clear()
             LastPatient = 0
             DrawingWeights.clear()
             InfectionWarnings.clear()
             
+            if LastRowAvailable >= 100:
+                worksheet = workbook.add_worksheet()
+                worksheet.set_column(0, 0, 20)
+                worksheet.set_column(14, 14, 12)
+                worksheet.set_column(15, 15, 10)
+                worksheet.set_column(16, 16, 13)
+                worksheet.set_column(17, 17, 13)
+                worksheet.set_column(18, 18, 16)
+
+                LastRowAvailable = 0
+            
         LastPatient = -1
             
 #        pool.map(RunPatient, [(g, 0), (g, 1), (g, 2), (g, 3)])    
-      
+     
 def RunPatient(g, p):
-    
-    global LastRowAvailable
-    
-    print("Patient started: GEN " + str(g) + " - P " + str(p))
-    OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
-    worksheet.write(LastRowAvailable + 1, 0, "Patient started: GEN " + str(g) + " - P " + str(p))
-    LastRowAvailable += 1
     
     if InfectionUserDefined:
         InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
@@ -339,26 +346,11 @@ def RunPatient(g, p):
             ClassUpParticles[g][p].append([]) # adds 1 cycle
             ClassDownParticles[g][p].append([]) # adds 1 cycle
             
-            if MakeCutOff:
-                for particle in Matrix[g][p][Cy - 1]: # takes 1 particle from previous cycle
-                    for i in range(particle.R): # creates N new particles, based on the R class
-                        Matrix[g][p][Cy].append(ParticleClass.Particle(particle.R))
+            for particle in Matrix[g][p][Cy - 1]: # takes 1 particle from previous cycle
+                for i in range(particle): # creates N new particles, based on the R class
+                    Matrix[g][p][Cy].append(particle)
                         
-                CutOffMaxParticlesPerCycle(g, p, Cy)
-                
-            else:
-                for i in range(len(Matrix[g][p][Cy - 1])):
-                    
-                    if len(Matrix[g][p][Cy]) <= MaxParticles:
-                        RandomParticle = random.random()
-                        RandomParticle = int(RandomParticle * len(Matrix[g][p][Cy - 1]))
-    #                    print(RandomNumber, len(Matrix[g][p][Cy - 1]))
-                        
-                        particle = Matrix[g][p][Cy - 1][RandomParticle]
-                        
-                        for i in range(particle.R): # creates N new particles, based on the R class
-                            Matrix[g][p][Cy].append(ParticleClass.Particle(particle.R))
-                
+        CutOffMaxParticlesPerCycle(g, p, Cy)
         ApplyMutationsProbabilities(g, p, Cy)
         
         #print("Cycle " + str(Cy) + " " + str(Matrix[g][p, Cy]))
@@ -383,7 +375,7 @@ def RunPatient(g, p):
 	    #print("Patients processed: GEN " + str(g) + " - P " + str(p));
         
    # memory()
-   
+
 def CutOffMaxParticlesPerCycle(g, p, Cy):
     
     if(len(Matrix[g][p][Cy]) > MaxParticles):
@@ -391,7 +383,7 @@ def CutOffMaxParticlesPerCycle(g, p, Cy):
         rndParticles = random.sample(Matrix[g][p][Cy], MaxParticles)
     
         Matrix[g][p][Cy] = rndParticles 
-                              
+                      
 def ApplyMutationsProbabilities(g, p, Cy):
     # This function will apply three probabilities: Deleterious, Beneficial or Neutral.
     # Their roles is to simulate real mutations of virus genome.
@@ -401,8 +393,10 @@ def ApplyMutationsProbabilities(g, p, Cy):
     UpParticles = 0
     DownParticles = 0 
     
+    i = 0
+    
     if(Cy > 0):
-        for particle in Matrix[g][p][Cy]:
+        while i < len(Matrix[g][p][Cy]):
             # In this loop, for each particle a random number is selected.
             # Here a random (float) number greater than zero and less than one is selected.
             RandomNumber = random.random()
@@ -416,13 +410,22 @@ def ApplyMutationsProbabilities(g, p, Cy):
             
             if RandomNumber < DeleteriousProbability[Cy]:
                 # Deleterious Mutation = 90,0% probability (0.9)
-                particle.DemoteClass()
+                if Matrix[g][p][Cy][i] > 0:
+                    Matrix[g][p][Cy][i] -= 1
+                    
+                else:
+                    Matrix[g][p][Cy][i].pop(i)
+                    
                 DownParticles += 1
                 
             elif (RandomNumber < (DeleteriousProbability[Cy] + BeneficialProbability[Cy])):
                 # Beneficial Mutation = 0,5% probability (0.005)
-                particle.RaiseClass()
+                if Matrix[g][p][Cy][i] < 10:
+                    Matrix[g][p][Cy][i] += 1
+                    
                 UpParticles += 1
+                
+            i += 1
 
     ClassUpParticles[g][p][Cy] = UpParticles
     ClassDownParticles[g][p][Cy] = DownParticles
@@ -481,7 +484,7 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
         # creates 1 new particle, on a patient in the next generation
         # in cycle 0. The new particle will be of the same class of the
         # one that infected the patient
-        Matrix[g + 1][patient][0].append(ParticleClass.Particle(particle.R))
+        Matrix[g + 1][patient][0].append(particle)
         
     print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
     OutputFile.write("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy) + "\n") 
@@ -519,10 +522,13 @@ def SaveData(g, p, Cy):
 
         LastRowAvailable += 1
            
-    ClassCount = [0] * Classes # R Classes from 0 to 10
+    ClassCount = [0] * (Classes + 1) # We want ClassCount to be an array of 11 positions, from 0 to 10, not 0 to 9
     
     for particle in Matrix[g][p][Cy]:
-        ClassCount[particle.R] += 1 # R Class 10 actually goes to array position 11
+        try:
+            ClassCount[particle] += 1
+        except:
+            print("Error: " + str(particle))
     
     if(len(Matrix[g][p][Cy]) > 0):
         PercentageOfParticlesUp = (ClassUpParticles[g][p][Cy] / len(Matrix[g][p][Cy]))
