@@ -7,13 +7,15 @@ import xlsxwriter
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 9
+Generations = 31
 
 # Number of Patients in Generation 1
-Gen1Patients = 4
+Gen1Patients = 1
+
+NewWorksheetEachPatient = True
 
 # Number of Cycles
-Cycles = 10
+Cycles = 50
 
 # Number of Classes
 Classes = 11
@@ -31,16 +33,16 @@ InfectionParticles = 5
 # array of strings to store when infection occurs, so that it can be written to output
 InfectionWarnings = []
 
-InfectionUserDefined = True
+InfectionUserDefined = False
 
 # this array is called inside the RunSimulation function
-NumberOfInfectionCycles = 4
+NumberOfInfectionCycles = Gen1Patients
 
 # 0-10 - 50%
 # 11-20 - 25%
 # 21-30 - 15%
 # 31-50 - 10%
-DrawIntervals = {10: 50, 20: 25, 30: 15, 50: 10}
+DrawIntervals = {4: 10, 10: 20, 20: 30, 40: 40}
 DrawIntervalsKeys = list(DrawIntervals.keys())
 
 InfectionCycle = {}
@@ -59,7 +61,7 @@ BeneficialProbability = [0] * Cycles
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 BeneficialIncrement = False
 
-FirstBeneficial = 0.0003
+FirstBeneficial = 0.0008
 SecondBeneficial = 0.0008
 
 # if TRUE, deleterious probability will increase by INCREMENT each cycle
@@ -71,27 +73,32 @@ SecondDeleterious = 0.8
 
 ChangeCycle = 8
 
+# Maximum R Class that a patient has at cycle 0
+# it is also the maximum R Class of received infection
+MaxR = 0
+
 # Lists to keep the number of particles that go up or down the classes, during mutations
 # So, for example, the list ClassUpParticle[0][1, 4] will keep the number of particles
 # that went up 1 class, in GENERATION 0, PATIENT 1, CYCLE 4
 ClassUpParticles = []
 ClassDownParticles = []
 
-OutputFile = open('Testfile.txt', 'w') 
+#OutputFile = open('Testfile.txt', 'w') 
 
+MaxWorksheetSize = 1000000 # Max number of lines per worksheet
 ExcelFileName = "TFounderSim" + datetime.now().strftime('%d-%m-%Y_%H-%M-%S') + '.xlsx'
-workbook = xlsxwriter.Workbook(ExcelFileName)
+workbook = xlsxwriter.Workbook(ExcelFileName, {'constant_memory': True})
+#workbook = xlsxwriter.Workbook(ExcelFileName)
 worksheet = workbook.add_worksheet()
 HorizAlign = workbook.add_format()
 HorizAlign.set_align('center')
 
 bold = workbook.add_format({'bold': True})
 LastRowAvailable = 0
-LastPatient = -1
 
 # set_column(column1, column2, size)
 worksheet.set_column(0, 0, 20)
-worksheet.set_column(2, 2, 5)
+worksheet.set_column(2, 2, 8)
 worksheet.set_column(14, 14, 12)
 worksheet.set_column(15, 15, 10)
 worksheet.set_column(16, 16, 13)
@@ -138,12 +145,9 @@ worksheet.write(LastRowAvailable, 0, "Change Cycle", bold)
 worksheet.write(LastRowAvailable, 1, ChangeCycle)
 LastRowAvailable += 1
 
-
-# TODO place a TAB Summary and a TAB results in the Excel workbook 
-
 def main():
     
-    global LastRowAvailable
+    global LastRowAvailable, LastPatient, worksheet, HorizAlign
     
     print("\nMain function started: " + str(datetime.now()) + "\n")
     startTime = datetime.now()
@@ -157,6 +161,23 @@ def main():
     # Declaring the three-dimensional Matrix: 
     # it has p Patients, Cy lines of Cycles, 
     # defined by the variables at the begginning of the code. 
+    
+    worksheet = workbook.add_worksheet()
+    HorizAlign = workbook.add_format()
+    HorizAlign.set_align('center')
+
+    bold = workbook.add_format({'bold': True})
+    LastRowAvailable = 0
+    LastPatient = -1
+
+    # set_column(column1, column2, size)
+    worksheet.set_column(0, 0, 20)
+    worksheet.set_column(2, 2, 8)
+    worksheet.set_column(14, 14, 12)
+    worksheet.set_column(15, 15, 10)
+    worksheet.set_column(16, 16, 13)
+    worksheet.set_column(17, 17, 13)
+    worksheet.set_column(18, 18, 16)
 
     for g in range(Generations):
         Matrix.append([])
@@ -222,9 +243,9 @@ def main():
     print("Date: " + str(datetime.now()) + "\n")
     print("Python Implementation: " + platform.python_implementation())
     
-    OutputFile.write("Total run time: " + str(datetime.now() - startTime) + "\n")
-    OutputFile.write("Date: " + str(datetime.now()) + "\n")
-    OutputFile.close()
+#    OutputFile.write("Total run time: " + str(datetime.now() - startTime) + "\n")
+#    OutputFile.write("Date: " + str(datetime.now()) + "\n")
+#    OutputFile.close()
     
     # worksheet.write(Row, Column, String, format)
     LastRowAvailable += 2
@@ -272,7 +293,7 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
  
 def RunSimulation():
     
-    global LastPatient, worksheet, LastRowAvailable
+    global LastPatient, workbook, worksheet, HorizAlign, ExcelFileName, LastRowAvailable, MaxR
     
     # Populates the CyclesForDrawing array with number of cycles
     for i in range(Cycles):
@@ -285,11 +306,43 @@ def RunSimulation():
     # Main Loop to create more particles on the next Cycles from the Cycle Zero.
     # Each matrix position will bring a value. This value will be mutiplied by its own class number. 
     for g in range(Generations):
+        
+#        if g > 8: 
+#            # writes excel file to disk and creates another one            
+#            # to avoid too large files
+#            workbook.close()
+#            
+#            if g == 9:
+#                # remove ".xlsx" from the string, 
+#                # in the first time we a create another file
+#                ExcelFileName = ExcelFileName[:-5]
+#        
+#            else:
+#                # remove "_Gx.xlsx" from the string
+#                ExcelFileName = ExcelFileName[:-8]
+#                
+#            ExcelFileName += "_G" + str(g) + ".xlsx"
+#            
+#            workbook = xlsxwriter.Workbook(ExcelFileName, {'constant_memory': True})
+#            worksheet = workbook.add_worksheet()
+#            
+#            HorizAlign = workbook.add_format()
+#            HorizAlign.set_align('center')
+#
+#            worksheet.set_column(0, 0, 20)
+#            worksheet.set_column(14, 14, 12)
+#            worksheet.set_column(15, 15, 10)
+#            worksheet.set_column(16, 16, 13)
+#            worksheet.set_column(17, 17, 13)
+#            worksheet.set_column(18, 18, 16)
+#            
+#            LastRowAvailable = 0
+            
         for p in range(pow(Gen1Patients, g)): # pow(Gen1Patients, g) gives the generation size
             
             print("Patient started: GEN " + str(g) + " - P " + str(p))
-            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
-            worksheet.write(LastRowAvailable + 1, 0, "Patient started: GEN " + str(g) + " - P " + str(p))
+#            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
+            worksheet.write(LastRowAvailable + 1, 0, "Patient: GEN " + str(g) + " - P " + str(p))
             LastRowAvailable += 1
             
             RunPatient(g, p) 
@@ -297,8 +350,9 @@ def RunSimulation():
             LastPatient = 0
             DrawingWeights.clear()
             InfectionWarnings.clear()
+            MaxR = 0
             
-            if LastRowAvailable >= 100:
+            if LastRowAvailable >= MaxWorksheetSize or NewWorksheetEachPatient:
                 worksheet = workbook.add_worksheet()
                 worksheet.set_column(0, 0, 20)
                 worksheet.set_column(14, 14, 12)
@@ -315,19 +369,22 @@ def RunSimulation():
      
 def RunPatient(g, p):
     
+    global LastRowAvailable, InfectionCycle
+    
     if InfectionUserDefined:
         InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
         
+    # Populates the DrawingWeights array
     else:
         for i in range(Cycles):
             if i <= DrawIntervalsKeys[0]:
-                DrawingWeights.append(DrawIntervals[10])
+                DrawingWeights.append(DrawIntervals[4])
             elif i > DrawIntervalsKeys[0] and i <= DrawIntervalsKeys[1]:
-                DrawingWeights.append(DrawIntervals[20])
+                DrawingWeights.append(DrawIntervals[10])
             elif i > DrawIntervalsKeys[1] and i <= DrawIntervalsKeys[2]:
-                DrawingWeights.append(DrawIntervals[30])
+                DrawingWeights.append(DrawIntervals[20])
             else:
-                DrawingWeights.append(DrawIntervals[50])
+                DrawingWeights.append(DrawIntervals[40])
                 
 #        print(DrawingWeights)
             
@@ -335,6 +392,8 @@ def RunPatient(g, p):
         
         for i in range(1, NumberOfInfectionCycles + 1):
             InfectionCycle[i] = DrawnCycles[i - 1]
+            
+#        print(InfectionCycle)
     
     for Cy in range(Cycles):
         
@@ -451,7 +510,7 @@ def PickRandomParticlesForInfection(g, p, Cy, cycleForInfection):
     # if there are no particles for infection, there is no infection
     if (NoParticlesForInfection):
         print("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.")
-        OutputFile.write("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.") 
+#        OutputFile.write("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.") 
         text = "G" + str(g) + " " + "P" + str(p) + " Cycle " + str(Cy) + " has no particles."
         InfectionWarnings.append(text)
         
@@ -487,7 +546,7 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
         Matrix[g + 1][patient][0].append(particle)
         
     print("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
-    OutputFile.write("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy) + "\n") 
+#    OutputFile.write("G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy) + "\n") 
     
     text = "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy)
     InfectionWarnings.append(text)
@@ -495,7 +554,7 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
 #    LastRowAvailable += 1
 
 def SaveData(g, p, Cy):
-    global LastRowAvailable, LastPatient
+    global LastRowAvailable, LastPatient, MaxR
     
     Mi = 0
     
@@ -508,17 +567,17 @@ def SaveData(g, p, Cy):
     
         for R in range(Classes):
             # fill a line in the Excel file with R0, R1, R2 .... R10
-            worksheet.write(LastRowAvailable, R + 3, "R" + str(R), HorizAlign)
+            worksheet.write(LastRowAvailable, R + 1, "R" + str(R), HorizAlign)
             
-        worksheet.write(LastRowAvailable, 2, "Cycle", HorizAlign)
-        worksheet.write(LastRowAvailable, 14, "Cycle Particles", HorizAlign)
-        worksheet.write(LastRowAvailable, 15, "Mi", HorizAlign)
+        worksheet.write(LastRowAvailable, 0, "Cycle", HorizAlign)
+        worksheet.write(LastRowAvailable, 12, "Cycle Particles", HorizAlign)
+        worksheet.write(LastRowAvailable, 13, "Mi", HorizAlign)
         
         
-        worksheet.write(LastRowAvailable, 16, "Particles Up", HorizAlign)
-        worksheet.write(LastRowAvailable, 17, "Particles Up - %", HorizAlign)
-        worksheet.write(LastRowAvailable, 18, "Particles Down", HorizAlign)
-        worksheet.write(LastRowAvailable, 19, "Particles Down - %", HorizAlign)
+        worksheet.write(LastRowAvailable, 14, "Particles Up", HorizAlign)
+        worksheet.write(LastRowAvailable, 15, "Particles Up - %", HorizAlign)
+        worksheet.write(LastRowAvailable, 16, "Particles Down", HorizAlign)
+        worksheet.write(LastRowAvailable, 17, "Particles Down - %", HorizAlign)
 
         LastRowAvailable += 1
            
@@ -537,37 +596,37 @@ def SaveData(g, p, Cy):
         PercentageOfParticlesUp = 0.0
         PercentageOfParticlesDown = 0.0
     
-    if(Cy == 0):
-        worksheet.write(LastRowAvailable, 0, "Generation")
-        worksheet.write(LastRowAvailable, 1, g, HorizAlign)
-        worksheet.write(LastRowAvailable + 1, 0, "Patient")
-        worksheet.write(LastRowAvailable + 1, 1, p, HorizAlign)
-        
+    if(Cy == 0):        
         MaxR = GetMaxR(ClassCount)
-        worksheet.write(LastRowAvailable + 2, 0, "Max R at Cycle 0")
-        worksheet.write(LastRowAvailable + 2, 1, MaxR, HorizAlign)
     
     for R in range(Classes):
         # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
-        worksheet.write(LastRowAvailable, R + 3, ClassCount[R], HorizAlign)
+        worksheet.write(LastRowAvailable, R + 1, ClassCount[R], HorizAlign)
         
-    worksheet.write(LastRowAvailable, 2, Cy, HorizAlign)
-    worksheet.write(LastRowAvailable, 14, len(Matrix[g][p][Cy]), HorizAlign)
+    worksheet.write(LastRowAvailable, 0, Cy, HorizAlign)
+    worksheet.write(LastRowAvailable, 12, len(Matrix[g][p][Cy]), HorizAlign)
     
     Mi = GetMi(ClassCount, len(Matrix[g][p][Cy]))
-    worksheet.write(LastRowAvailable, 15, Mi, HorizAlign)
+    worksheet.write(LastRowAvailable, 13, Mi, HorizAlign)
         
-    worksheet.write(LastRowAvailable, 16, ClassUpParticles[g][p][Cy], HorizAlign)
-    worksheet.write(LastRowAvailable, 17, PercentageOfParticlesUp, HorizAlign)
-    worksheet.write(LastRowAvailable, 18, ClassDownParticles[g][p][Cy], HorizAlign)
-    worksheet.write(LastRowAvailable, 19, PercentageOfParticlesDown, HorizAlign)
+    worksheet.write(LastRowAvailable, 14, ClassUpParticles[g][p][Cy], HorizAlign)
+    worksheet.write(LastRowAvailable, 15, PercentageOfParticlesUp, HorizAlign)
+    worksheet.write(LastRowAvailable, 16, ClassDownParticles[g][p][Cy], HorizAlign)
+    worksheet.write(LastRowAvailable, 17, PercentageOfParticlesDown, HorizAlign)
         
 #    LastRowAvailable += 1
     
     if Cy == Cycles - 1:
+        LastRowAvailable += 2
+        
+        worksheet.write(LastRowAvailable, 0, "Max R at Cycle 0")
+        worksheet.write(LastRowAvailable, 1, MaxR, HorizAlign)
+        LastRowAvailable += 1
+                
         for i in range(len(InfectionWarnings)):
-            worksheet.write((LastRowAvailable - Cycles) + 5 + i, 0, InfectionWarnings[i])
-    
+            worksheet.write(LastRowAvailable, 0, InfectionWarnings[i])
+            LastRowAvailable += 1
+        
     LastPatient = p
     
 def GetMi(ClassCount, CycleParticles):
@@ -606,24 +665,34 @@ def memory():
     
 def IdentifyMachine():
     
-    worksheet.write(0, 5, "Python Implementation", bold)
-    worksheet.write(1, 5, platform.python_implementation(), bold)
+    global LastRowAvailable
+    
+    worksheet.write(LastRowAvailable, 0, "Python Implementation", bold)
+    LastRowAvailable += 1
+    
+    worksheet.write(LastRowAvailable, 0, platform.python_implementation(), bold)
+    LastRowAvailable += 1
 
     try:
         import cpuinfo
         print("CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
-        worksheet.write(6, 5, "CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
+        worksheet.write(LastRowAvailable, 0, "CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
+        LastRowAvailable += 1
     except:
         print("No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
-        worksheet.write(6, 5, "No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
+        worksheet.write(LastRowAvailable, 0, "No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
+        LastRowAvailable += 1
         
     print("Processor: " + platform.processor())
     print("Architecture (32 or 64 bits): " + platform.machine())
     print("OS: " + platform.platform())
     
-    worksheet.write(7, 5, "Processor: " + platform.processor())
-    worksheet.write(8, 5, "Architecture (32 or 64 bits): " + platform.machine())
-    worksheet.write(9, 5, "OS: " + platform.platform() + "\n")
+    worksheet.write(LastRowAvailable, 0, "Processor: " + platform.processor())
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "Architecture (32 or 64 bits): " + platform.machine())
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "OS: " + platform.platform() + "\n")
+    LastRowAvailable += 1
         
 main()
 
