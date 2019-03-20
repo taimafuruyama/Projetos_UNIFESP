@@ -7,10 +7,10 @@ import xlsxwriter
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 31
+Generations = 3
 
 # Number of Patients in Generation 1
-Gen1Patients = 1
+Gen1Patients = 8
 
 NewWorksheetEachPatient = True
 
@@ -33,16 +33,19 @@ InfectionParticles = 5
 # array of strings to store when infection occurs, so that it can be written to output
 InfectionWarnings = []
 
-InfectionUserDefined = False
+InfectionUserDefined = True
+UserDefindedCycleForInfection = 4
 
 # this array is called inside the RunSimulation function
 NumberOfInfectionCycles = Gen1Patients
 
-# 0-10 - 50%
-# 11-20 - 25%
-# 21-30 - 15%
-# 31-50 - 10%
-DrawIntervals = {4: 10, 10: 20, 20: 30, 40: 40}
+# Example:
+# {4: 10, 10: 20, 20: 30, 40: 40}
+# 0 - 4 = 10%
+# 5 - 10 = 20%
+# 11 - 20 = 30%
+# 21 - 50 = 40%
+DrawIntervals = {4: 10, 10: 20, 20: 30, 50: 40}
 DrawIntervalsKeys = list(DrawIntervals.keys())
 
 InfectionCycle = {}
@@ -52,7 +55,7 @@ DrawingWeights = [] # an array with CYCLES number of values, each one is a weigh
 DrawnCycles = [] # an array the size of NumberOfInfectionCycles
 
 # Max particles per cycle	
-MaxParticles = 1000000
+MaxParticles = 10000
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -372,11 +375,12 @@ def RunPatient(g, p):
     global LastRowAvailable, InfectionCycle
     
     if InfectionUserDefined:
-        InfectionCycle = {1: 4, 2: 4, 3: 4, 4: 4}
+        for i in range(1, NumberOfInfectionCycles + 1):
+            InfectionCycle[i] = UserDefindedCycleForInfection
         
-    # Populates the DrawingWeights array
     else:
         for i in range(Cycles):
+            # Populates the DrawingWeights array
             if i <= DrawIntervalsKeys[0]:
                 DrawingWeights.append(DrawIntervals[4])
             elif i > DrawIntervalsKeys[0] and i <= DrawIntervalsKeys[1]:
@@ -384,7 +388,7 @@ def RunPatient(g, p):
             elif i > DrawIntervalsKeys[1] and i <= DrawIntervalsKeys[2]:
                 DrawingWeights.append(DrawIntervals[20])
             else:
-                DrawingWeights.append(DrawIntervals[40])
+                DrawingWeights.append(DrawIntervals[50])
                 
 #        print(DrawingWeights)
             
@@ -536,7 +540,7 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
     
     # Example: if INFECTIONCYCLE is {1: 8, 2: 4, 3: 6, 4: 2}
     # and cycleForInfection is 3 (3 is the key, not the value), 
-    # patient = PatientsToInfect[3 - 1] = PatientsToInfect[2]
+    # patient = PatientsToInfect[3 - 1] = PatientsToInfect[2]    
     patient = PatientsToInfect[cycleForInfection - 1]
     
     for particle in InfectedParticles:
