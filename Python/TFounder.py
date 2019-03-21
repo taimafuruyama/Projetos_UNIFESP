@@ -7,10 +7,10 @@ import xlsxwriter
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 3
+Generations = 5
 
 # Number of Patients in Generation 1
-Gen1Patients = 8
+Gen1Patients = 1
 
 NewWorksheetEachPatient = True
 
@@ -32,8 +32,9 @@ InfectionParticles = 5
 
 # array of strings to store when infection occurs, so that it can be written to output
 InfectionWarnings = []
+InfectionWarningsCycle = []
 
-InfectionUserDefined = True
+InfectionUserDefined = False
 UserDefindedCycleForInfection = 4
 
 # this array is called inside the RunSimulation function
@@ -345,7 +346,8 @@ def RunSimulation():
             
             print("Patient started: GEN " + str(g) + " - P " + str(p))
 #            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
-            worksheet.write(LastRowAvailable + 1, 0, "Patient: GEN " + str(g) + " - P " + str(p))
+            worksheet.write(LastRowAvailable + 1, 0, "Patient:")
+            worksheet.write(LastRowAvailable + 1, 1, "GEN " + str(g) + " - P " + str(p))
             LastRowAvailable += 1
             
             RunPatient(g, p) 
@@ -353,6 +355,7 @@ def RunSimulation():
             LastPatient = 0
             DrawingWeights.clear()
             InfectionWarnings.clear()
+            InfectionWarningsCycle.clear()
             MaxR = 0
             
             if LastRowAvailable >= MaxWorksheetSize or NewWorksheetEachPatient:
@@ -517,6 +520,7 @@ def PickRandomParticlesForInfection(g, p, Cy, cycleForInfection):
 #        OutputFile.write("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.") 
         text = "G" + str(g) + " " + "P" + str(p) + " Cycle " + str(Cy) + " has no particles."
         InfectionWarnings.append(text)
+        InfectionWarningsCycle.append(None)
         
     else:
         InfectPatients(InfectedParticles, g, p, Cy,cycleForInfection)
@@ -554,6 +558,7 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
     
     text = "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy)
     InfectionWarnings.append(text)
+    InfectionWarningsCycle.append(Cy)
 #    worksheet.write(LastRowAvailable, 0, "G " + str(g) + " P " + str(p) + " infected G " + str(g + 1) + " P " + str(patient) + " at cycle " + str(Cy))
 #    LastRowAvailable += 1
 
@@ -629,6 +634,7 @@ def SaveData(g, p, Cy):
                 
         for i in range(len(InfectionWarnings)):
             worksheet.write(LastRowAvailable, 0, InfectionWarnings[i])
+            worksheet.write(LastRowAvailable, 2, InfectionWarningsCycle[i])
             LastRowAvailable += 1
         
     LastPatient = p
