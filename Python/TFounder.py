@@ -3,11 +3,12 @@ import random
 from datetime import datetime
 #import matplotlib.pyplot as plt
 import xlsxwriter
+#import numpy
 
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 5
+Generations = 101
 
 # Number of Patients in Generation 1
 Gen1Patients = 1
@@ -15,7 +16,7 @@ Gen1Patients = 1
 NewWorksheetEachPatient = True
 
 # Number of Cycles
-Cycles = 50
+Cycles = 45
 
 # Number of Classes
 Classes = 11
@@ -46,7 +47,7 @@ NumberOfInfectionCycles = Gen1Patients
 # 5 - 10 = 20%
 # 11 - 20 = 30%
 # 21 - 50 = 40%
-DrawIntervals = {4: 10, 10: 20, 20: 30, 50: 40}
+DrawIntervals = {4: 0, 13: 0, 24: 0, 42: 100}
 DrawIntervalsKeys = list(DrawIntervals.keys())
 
 InfectionCycle = {}
@@ -56,7 +57,7 @@ DrawingWeights = [] # an array with CYCLES number of values, each one is a weigh
 DrawnCycles = [] # an array the size of NumberOfInfectionCycles
 
 # Max particles per cycle	
-MaxParticles = 10000
+MaxParticles = 1000000
 
 DeleteriousProbability = [0] * Cycles
 BeneficialProbability = [0] * Cycles
@@ -65,7 +66,7 @@ BeneficialProbability = [0] * Cycles
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 BeneficialIncrement = False
 
-FirstBeneficial = 0.0008
+FirstBeneficial = 0.0003
 SecondBeneficial = 0.0008
 
 # if TRUE, deleterious probability will increase by INCREMENT each cycle
@@ -346,8 +347,11 @@ def RunSimulation():
             
             print("Patient started: GEN " + str(g) + " - P " + str(p))
 #            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
-            worksheet.write(LastRowAvailable + 1, 0, "Patient:")
-            worksheet.write(LastRowAvailable + 1, 1, "GEN " + str(g) + " - P " + str(p))
+#            worksheet.write(LastRowAvailable + 1, 0, "Patient:")
+            worksheet.write(LastRowAvailable + 1, 1, "Generation: ")
+            worksheet.write(LastRowAvailable + 1, 2, str(g))
+            worksheet.write(LastRowAvailable + 1, 3, "Patient: ")
+            worksheet.write(LastRowAvailable + 1, 4, str(p))
             LastRowAvailable += 1
             
             RunPatient(g, p) 
@@ -387,11 +391,11 @@ def RunPatient(g, p):
             if i <= DrawIntervalsKeys[0]:
                 DrawingWeights.append(DrawIntervals[4])
             elif i > DrawIntervalsKeys[0] and i <= DrawIntervalsKeys[1]:
-                DrawingWeights.append(DrawIntervals[10])
+                DrawingWeights.append(DrawIntervals[13])
             elif i > DrawIntervalsKeys[1] and i <= DrawIntervalsKeys[2]:
-                DrawingWeights.append(DrawIntervals[20])
+                DrawingWeights.append(DrawIntervals[24])
             else:
-                DrawingWeights.append(DrawIntervals[50])
+                DrawingWeights.append(DrawIntervals[42])
                 
 #        print(DrawingWeights)
             
@@ -605,8 +609,14 @@ def SaveData(g, p, Cy):
         PercentageOfParticlesUp = 0.0
         PercentageOfParticlesDown = 0.0
     
-    if(Cy == 0):        
-        MaxR = GetMaxR(ClassCount)
+    if(Cy == 0):
+        
+        if(len(Matrix[g][p][Cy]) > 0):       
+            MaxR = GetMaxR(ClassCount)
+            
+        if (len(Matrix[g][p][Cy]) == 0):
+            MaxR = 999
+#            MaxR = str(GetMaxR(ClassCount)).replace(str(0), str(numpy.NaN))
     
     for R in range(Classes):
         # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
