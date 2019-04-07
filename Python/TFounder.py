@@ -3,7 +3,11 @@ import platform
 import random
 import time
 from datetime import datetime
-#import matplotlib.pyplot as plt
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+
 import xlsxwriter
 #import numpy
 
@@ -418,8 +422,22 @@ class TabBar(QWidget):
         
         """ Plot Tab"""
         
+        self.PlotTab.layout = QVBoxLayout(self)
+        self.PlotTab.setLayout(self.PlotTab.layout)
         
+        self.figure = Figure()
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.axis = self.figure.add_subplot(111)
+
+        self.PlotTab.layout.addWidget(self.canvas)
+                
         """ Table Output Tab """
+        
+        self.TableTab.layout = QVBoxLayout(self)
+        self.TableTab.setLayout(self.TableTab.layout)
+        
+        self.TableTab.table = QTableWidget(50, 20, self)
+        self.TableTab.layout.addWidget(self.TableTab.table)
         
         
         """ Console Output Tab """
@@ -452,21 +470,28 @@ class TabBar(QWidget):
         
         self.NumberOfInfectionCyclesField.setText(text)
         
-#        Intervals = int(text)
-        
-#        for i in range(Intervals):
-#            self.InfectionIntervalsProbLabel = QLabel("Infection Intervals Probabilities")
-#            self.SetupTab.layout.addWidget(self.InfectionIntervalsProbLabel, 19, 0)
-#            self.ChangeCycleField = QLineEdit("1")
-#            self.SetupTab.layout.addWidget(self.ChangeCycleField, 16, 1)
-        
     def InfectionUserDefinedChanged(self):
         if self.InfectionUserDefinedField.isChecked():
             self.UserDefindedCycleForInfectionField.setReadOnly(False)
             self.UserDefindedCycleForInfectionField.setStyleSheet("color: black")
+            
+            for i in range(4):   
+                self.IntervalsFields[i].setReadOnly(True)
+                self.IntervalsFields[i].setStyleSheet("color: gray")
+                
+                self.ProbFields[i].setReadOnly(True)
+                self.ProbFields[i].setStyleSheet("color: gray")
+                
         else:
             self.UserDefindedCycleForInfectionField.setReadOnly(True)
             self.UserDefindedCycleForInfectionField.setStyleSheet("color: gray")
+            
+            for i in range(4):   
+                self.IntervalsFields[i].setReadOnly(False)
+                self.IntervalsFields[i].setStyleSheet("color: black")
+                
+                self.ProbFields[i].setReadOnly(False)
+                self.ProbFields[i].setStyleSheet("color: black")
             
     def BeneficialIncrementChanged(self):
         if self.BeneficialIncrementField.isChecked():
@@ -484,8 +509,6 @@ class TabBar(QWidget):
             self.SecondDeleteriousField.setReadOnly(True)
             self.SecondDeleteriousField.setStyleSheet("color: gray")
             
-    
-        
 def main():
     
     global ConsoleOut, mainWin
