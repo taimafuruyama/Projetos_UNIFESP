@@ -464,9 +464,14 @@ class TabBar(QWidget):
         
     def Gen1PatientsChanged(self, text):
         
-        if int(text) > 4:
-            self.Gen1PatientsField.setText(str(4))
-            text = 4
+        if text != "":
+            if int(text) == 0:
+                self.Gen1PatientsField.setText(str(1))
+                text = "1"
+            
+            if text != "" and int(text) > 4:
+                self.Gen1PatientsField.setText(str(4))
+                text = "4"
         
         self.NumberOfInfectionCyclesField.setText(text)
         
