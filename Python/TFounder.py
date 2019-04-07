@@ -1,42 +1,53 @@
+import sys
 import platform
 import random
+import time
 from datetime import datetime
 #import matplotlib.pyplot as plt
 import xlsxwriter
 #import numpy
 
+from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, QDialog, QPushButton
+from PyQt5.QtWidgets import QFileDialog, QTabWidget, QVBoxLayout, QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QStatusBar, QCheckBox, QVBoxLayout, QComboBox, QSpinBox, QLineEdit
+from PyQt5.QtWidgets import QGroupBox
+from PyQt5.QtCore import QSize, Qt
+
+SimulationTimes = None
+
 # Number of Generations
 # Generation 0 always have only 1 patient
 # Generations 1 and forward have the number of patients defined in the GEN1PATIENTS variable
-Generations = 101
+Generations = None
 
 # Number of Patients in Generation 1
-Gen1Patients = 1
+Gen1Patients = None
 
-NewWorksheetEachPatient = True
+NewWorksheetEachPatient = None
 
 # Number of Cycles
-Cycles = 45
+Cycles = None
 
 # Number of Classes
-Classes = 11
+Classes = None
 
 # Matrix containing all the data (generations, patients, cycles and classes)
 Matrix = []
 
 # The "InitialParticles" is the initial amount of viral particles, that is: the initial virus population of a infection.
-InitialParticles = 5
+InitialParticles = None
 
-ClassOfInitialParticles = 10
+ClassOfInitialParticles = None
 
-InfectionParticles = 5
+InfectionParticles = None
 
 # array of strings to store when infection occurs, so that it can be written to output
 InfectionWarnings = []
 InfectionWarningsCycle = []
 
-InfectionUserDefined = False
-UserDefindedCycleForInfection = 4
+InfectionUserDefined = None
+UserDefindedCycleForInfection = None
 
 # this array is called inside the RunSimulation function
 NumberOfInfectionCycles = Gen1Patients
@@ -57,26 +68,26 @@ DrawingWeights = [] # an array with CYCLES number of values, each one is a weigh
 DrawnCycles = [] # an array the size of NumberOfInfectionCycles
 
 # Max particles per cycle	
-MaxParticles = 1000000
+MaxParticles = None
 
-DeleteriousProbability = [0] * Cycles
-BeneficialProbability = [0] * Cycles
+DeleteriousProbability = None
+BeneficialProbability = None
 
 # if TRUE, beneficial probability will increase by INCREMENT each cycle
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
-BeneficialIncrement = False
+BeneficialIncrement = None
 
-FirstBeneficial = 0.0003
-SecondBeneficial = 0.0008
+FirstBeneficial = None
+SecondBeneficial = None
 
 # if TRUE, deleterious probability will increase by INCREMENT each cycle
 # if FALSE, it will change from a fixed value to another fixed value, at the chosen cycle
 DeleteriousIncrement = False
 
-FirstDeleterious = 0.3
-SecondDeleterious = 0.8
+FirstDeleterious = None
+SecondDeleterious = None
 
-ChangeCycle = 8
+ChangeCycle = None
 
 # Maximum R Class that a patient has at cycle 0
 # it is also the maximum R Class of received infection
@@ -88,77 +99,489 @@ MaxR = 0
 ClassUpParticles = []
 ClassDownParticles = []
 
-#OutputFile = open('Testfile.txt', 'w') 
-
-MaxWorksheetSize = 1000000 # Max number of lines per worksheet
-ExcelFileName = "TFounderSim" + datetime.now().strftime('%d-%m-%Y_%H-%M-%S') + '.xlsx'
-workbook = xlsxwriter.Workbook(ExcelFileName, {'constant_memory': True})
-#workbook = xlsxwriter.Workbook(ExcelFileName)
-worksheet = workbook.add_worksheet()
-HorizAlign = workbook.add_format()
-HorizAlign.set_align('center')
-
-bold = workbook.add_format({'bold': True})
+# Excel output global variables
+MaxWorksheetSize = 0
+workbook = None
+worksheet = None
+HorizAlign = None
+bold = None
 LastRowAvailable = 0
+LastPatient = -1
 
-# set_column(column1, column2, size)
-worksheet.set_column(0, 0, 20)
-worksheet.set_column(2, 2, 8)
-worksheet.set_column(14, 14, 12)
-worksheet.set_column(15, 15, 10)
-worksheet.set_column(16, 16, 13)
-worksheet.set_column(17, 17, 13)
-worksheet.set_column(18, 18, 16)
+# Qt
+mainWin = None
+ConsoleOut = None
 
-worksheet.write(LastRowAvailable, 0, "Generations", bold)
-worksheet.write(LastRowAvailable, 1, Generations)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Gen1Patients", bold)
-worksheet.write(LastRowAvailable, 1, Gen1Patients)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "InfectionCycle", bold)
-worksheet.write(LastRowAvailable, 1, str(InfectionCycle))
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Cycles", bold)
-worksheet.write(LastRowAvailable, 1, Cycles)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "InitialParticles", bold)
-worksheet.write(LastRowAvailable, 1, InitialParticles)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "ClassOfInitialParticles", bold)
-worksheet.write(LastRowAvailable, 1, ClassOfInitialParticles)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "InfectionParticles", bold)
-worksheet.write(LastRowAvailable, 1, InfectionParticles)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "MaxParticles", bold)
-worksheet.write(LastRowAvailable, 1, MaxParticles)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "First Beneficial", bold)
-worksheet.write(LastRowAvailable, 1, FirstBeneficial)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Second Beneficial", bold)
-worksheet.write(LastRowAvailable, 1, SecondBeneficial)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "First Deleterious", bold)
-worksheet.write(LastRowAvailable, 1, FirstDeleterious)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Second Deleterious", bold)
-worksheet.write(LastRowAvailable, 1, SecondDeleterious)
-LastRowAvailable += 1
-worksheet.write(LastRowAvailable, 0, "Change Cycle", bold)
-worksheet.write(LastRowAvailable, 1, ChangeCycle)
-LastRowAvailable += 1
+class MainWindow(QMainWindow):
+    
+    def __init__(self):
+        QMainWindow.__init__(self)
 
+        self.setMinimumSize(QSize(1200, 950)) # TODO open maximized
+        self.setWindowTitle("T-Founder 0.0.1") # TODO not "2" actually, change this later
+            
+        Menu = self.menuBar()
+        
+        file_menu = Menu.addMenu('File')
+        open_action = QtWidgets.QAction('Open', self)
+        quit_action = QtWidgets.QAction('Quit', self)
+        file_menu.addAction(open_action)
+        file_menu.addAction(quit_action)
+        quit_action.triggered.connect(self.close)
+        open_action.triggered.connect(self.OpenFiles)
+
+        edit_menu = Menu.addMenu('Edit')
+        undo_action = QtWidgets.QAction('Undo', self)
+        redo_action = QtWidgets.QAction('Redo', self)
+        edit_menu.addAction(undo_action)
+        edit_menu.addAction(redo_action)
+        
+        help_menu = Menu.addMenu('Help')
+        about_action = QtWidgets.QAction('About', self)
+        help_menu.addAction(about_action)
+        about_action.triggered.connect(self.AboutDialog)
+        
+        centralWidget = QWidget()
+        self.setCentralWidget(centralWidget)
+         
+        self.gridLayout = QGridLayout(self)   
+        self.setLayout(self.gridLayout)
+        self.gridLayout.setSpacing(0)
+        self.gridLayout.setContentsMargins(0, 0, 0, 0) # int LEFT, TOP, RIGHT, BOTTOM
+        
+        centralWidget.setLayout(self.gridLayout)
+        
+#        self.statusBar().showMessage("System Status | Normal") 
+        
+        self.MainTabBar = TabBar(self)
+#        MainTabBar.setFixedSize(QSize(800, 800))
+        self.MainTabBar.setMinimumWidth(800)
+        self.gridLayout.addWidget(self.MainTabBar, 0, 1)
+        
+    def OpenFiles(self):
+      OpenFileDialog = QFileDialog()
+      OpenFileDialog.setFileMode(QFileDialog.AnyFile)
+      
+      filenames = [] # TODO use QStringList?
+
+      if OpenFileDialog.exec_():
+          filenames = OpenFileDialog.selectedFiles()
+        
+    def AboutDialog(self):
+       AboutDialog = QDialog(None, QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowTitleHint)
+       AboutDialog.setMinimumSize(QSize(500, 700)) 
+       
+       gridLayout = QGridLayout(AboutDialog)   
+       AboutDialog.setLayout(gridLayout)  
+       
+       TitleText = "T-Founder 0.0.1"
+       
+       InfoText = '''(C) 2019 T-Founder'''
+       
+       DevelopersText = '''Developers
+       
+       Taimá Naomi Furuyama
+       
+       https://github.com/taimafuruyama/Projetos_UNIFESP'''
+       
+       RequirementsText = '''     
+       Requirements: 
+       Python version 3.6 or higher 
+       PyQt5 or higher 
+       
+       Download the Anaconda distribution to easily get all the packages:
+           
+           https://www.anaconda.com/distribution/'''
+       
+       TitelLabel = QLabel(TitleText, AboutDialog) 
+       TitelLabel.setFixedSize(QSize(500, 25))
+       TitelLabel.setAlignment(QtCore.Qt.AlignCenter) 
+       TitelLabel.setStyleSheet("font: bold 20px;")
+       gridLayout.addWidget(TitelLabel, 0, 0)
+       
+       InfoLabel = QLabel(InfoText, AboutDialog) 
+       InfoLabel.setFixedSize(QSize(500, 300))
+       InfoLabel.setAlignment(QtCore.Qt.AlignCenter) 
+       InfoLabel.setStyleSheet("text-align: justify")
+       gridLayout.addWidget(InfoLabel, 1, 0)
+       
+       DevelopersLabel = QLabel(DevelopersText, AboutDialog) 
+       DevelopersLabel.setFixedSize(QSize(500, 80))
+       DevelopersLabel.setAlignment(QtCore.Qt.AlignCenter) 
+       gridLayout.addWidget(DevelopersLabel, 2, 0)
+       
+       RequirementsLabel = QLabel(RequirementsText, AboutDialog) 
+       RequirementsLabel.setFixedSize(QSize(500, 150))
+       RequirementsLabel.setAlignment(QtCore.Qt.AlignCenter) 
+       gridLayout.addWidget(RequirementsLabel, 3, 0)
+
+       OkButton = QPushButton("OK",AboutDialog)
+       gridLayout.addWidget(OkButton, 4, 0)
+       OkButton.clicked.connect(AboutDialog.close)
+       
+       AboutDialog.setWindowTitle("About T-Founder")
+       AboutDialog.setWindowModality(Qt.ApplicationModal)
+       AboutDialog.exec_()
+       
+class TabBar(QWidget):
+ 
+    def __init__(self, parent):
+        super(QWidget, self).__init__(parent)
+        self.layout = QVBoxLayout(self)
+         
+        # Initialize tab screen
+        self.tabs = QTabWidget()
+        self.tabs.setMovable(True)
+        
+        self.SetupTab = QWidget()
+        self.PlotTab = QWidget()
+        self.TableTab = QWidget()
+        self.ConsoleTab = QWidget()
+         
+        # Add tabs
+        self.tabs.addTab(self.SetupTab,"Setup")
+        self.tabs.addTab(self.PlotTab ,"Plot")
+        self.tabs.addTab(self.TableTab,"Table Output")
+        self.tabs.addTab(self.ConsoleTab,"Console Output")
+        
+        """ Setup Tab"""
+        
+        self.SetupTab.layout = QGridLayout(self)
+        self.SetupTab.setLayout(self.SetupTab.layout)
+        self.SetupTab.layout.setSpacing(10)
+        self.SetupTab.layout.setContentsMargins(10, 5, 10, 0) # int LEFT, TOP, RIGHT, BOTTOM   
+#        self.tab1.setStyleSheet("background: lightgray")
+        
+        self.SimulationTimesLabel = QLabel("Simulations")
+        self.SetupTab.layout.addWidget(self.SimulationTimesLabel, 0, 0)
+        self.SimulationTimesField = QLineEdit("5")
+        self.SetupTab.layout.addWidget(self.SimulationTimesField, 0, 1)
+        
+        self.GenerationsLabel = QLabel("Generations")
+        self.SetupTab.layout.addWidget(self.GenerationsLabel, 1, 0)
+        self.GenerationsField = QLineEdit("1")
+        self.SetupTab.layout.addWidget(self.GenerationsField, 1, 1)
+        
+        self.Gen1PatientsLabel = QLabel("Patients at Generation 1")
+        self.SetupTab.layout.addWidget(self.Gen1PatientsLabel, 2, 0)
+        self.Gen1PatientsField = QLineEdit("1")
+        self.SetupTab.layout.addWidget(self.Gen1PatientsField, 2, 1)
+        
+        self.Gen1PatientsField.textChanged.connect(self.Gen1PatientsChanged)
+        
+        self.CyclesLabel = QLabel("Cycles")
+        self.SetupTab.layout.addWidget(self.CyclesLabel, 3, 0)
+        self.CyclesField = QLineEdit("10")
+        self.SetupTab.layout.addWidget(self.CyclesField, 3, 1)
+        
+        self.ClassesLabel = QLabel("Classes")
+        self.SetupTab.layout.addWidget(self.ClassesLabel, 4, 0)
+        self.ClassesField = QLineEdit("11")
+        self.SetupTab.layout.addWidget(self.ClassesField, 4, 1)
+        
+        self.InitialParticlesLabel = QLabel("Initial Particles")
+        self.SetupTab.layout.addWidget(self.InitialParticlesLabel, 5, 0)
+        self.InitialParticlesField = QLineEdit("5")
+        self.SetupTab.layout.addWidget(self.InitialParticlesField, 5, 1)
+        
+        self.ClassOfInitialParticlesLabel = QLabel("Class Of Initial Particles")
+        self.SetupTab.layout.addWidget(self.ClassOfInitialParticlesLabel, 6, 0)
+        self.ClassOfInitialParticlesField = QLineEdit("10")
+        self.SetupTab.layout.addWidget(self.ClassOfInitialParticlesField, 6, 1)
+        
+        self.InfectionParticlesLabel = QLabel("Infection Particles")
+        self.SetupTab.layout.addWidget(self.InfectionParticlesLabel, 7, 0)
+        self.InfectionParticlesField = QLineEdit("5")
+        self.SetupTab.layout.addWidget(self.InfectionParticlesField, 7, 1)
+        
+        self.NumberOfInfectionCyclesLabel = QLabel("Infection Cycles")
+        self.SetupTab.layout.addWidget(self.NumberOfInfectionCyclesLabel, 8, 0)
+        self.NumberOfInfectionCyclesField = QLabel("1")
+        self.SetupTab.layout.addWidget(self.NumberOfInfectionCyclesField, 8, 1)
+        self.NumberOfInfectionCyclesField.setMaximumHeight(10)
+        
+        self.MaxParticlesLabel = QLabel("Max Particles Per Cycle")
+        self.SetupTab.layout.addWidget(self.MaxParticlesLabel, 9, 0)
+        self.MaxParticlesField = QLineEdit("10000")
+        self.SetupTab.layout.addWidget(self.MaxParticlesField, 9, 1)
+        
+        self.BeneficialIncrementField = QCheckBox("Beneficial Increment")
+        self.SetupTab.layout.addWidget(self.BeneficialIncrementField, 10, 0) 
+        self.BeneficialIncrementField.setChecked(False)
+        self.BeneficialIncrementField.stateChanged.connect(self.BeneficialIncrementChanged)
+        
+        self.FirstBeneficialLabel = QLabel("First Beneficial")
+        self.SetupTab.layout.addWidget(self.FirstBeneficialLabel, 11, 0)
+        self.FirstBeneficialField = QLineEdit("0.0003")
+        self.SetupTab.layout.addWidget(self.FirstBeneficialField, 11, 1)
+        
+        self.SecondBeneficialLabel = QLabel("Second Beneficial")
+        self.SetupTab.layout.addWidget(self.SecondBeneficialLabel, 12, 0)
+        self.SecondBeneficialField = QLineEdit("0.0008")
+        self.SetupTab.layout.addWidget(self.SecondBeneficialField, 12, 1)
+        self.SecondBeneficialField.setReadOnly(True)
+        self.SecondBeneficialField.setStyleSheet("color: gray")
+        
+        self.DeleteriousIncrementField = QCheckBox("Deleterious Increment")
+        self.SetupTab.layout.addWidget(self.DeleteriousIncrementField, 13, 0) 
+        self.DeleteriousIncrementField.setChecked(False)
+        self.DeleteriousIncrementField.stateChanged.connect(self.DeleteriousIncrementChanged)
+        
+        self.FirstDeleteriousLabel = QLabel("First Deleterious")
+        self.SetupTab.layout.addWidget(self.FirstDeleteriousLabel, 14, 0)
+        self.FirstDeleteriousField = QLineEdit("0.3")
+        self.SetupTab.layout.addWidget(self.FirstDeleteriousField, 14, 1)
+        
+        self.SecondDeleteriousLabel = QLabel("Second Deleterious")
+        self.SetupTab.layout.addWidget(self.SecondDeleteriousLabel, 15, 0)
+        self.SecondDeleteriousField = QLineEdit("0.8")
+        self.SetupTab.layout.addWidget(self.SecondDeleteriousField, 15, 1)
+        self.SecondDeleteriousField.setReadOnly(True)
+        self.SecondDeleteriousField.setStyleSheet("color: gray")
+        
+        self.ChangeCycleLabel = QLabel("Change Cycle")
+        self.SetupTab.layout.addWidget(self.ChangeCycleLabel, 16, 0)
+        self.ChangeCycleField = QLineEdit("8")
+        self.SetupTab.layout.addWidget(self.ChangeCycleField, 16, 1)
+        
+        self.InfectionUserDefinedField = QCheckBox("Infection Cycles User Defined")
+        self.SetupTab.layout.addWidget(self.InfectionUserDefinedField, 17, 0) 
+        self.InfectionUserDefinedField.setChecked(False)
+        self.InfectionUserDefinedField.stateChanged.connect(self.InfectionUserDefinedChanged)
+        
+        self.UserDefindedCycleForInfectionLabel = QLabel("User Defined Cycle For Infection")
+        self.SetupTab.layout.addWidget(self.UserDefindedCycleForInfectionLabel, 18, 0)
+        self.UserDefindedCycleForInfectionField = QLineEdit("4")
+        self.SetupTab.layout.addWidget(self.UserDefindedCycleForInfectionField, 18, 1)
+        self.UserDefindedCycleForInfectionField.setReadOnly(True)
+        self.UserDefindedCycleForInfectionField.setStyleSheet("color: gray")
+        
+        self.InfectionIntervalsGroup = QGroupBox("Infection Intervals Probabilities")
+        self.SetupTab.layout.addWidget(self.InfectionIntervalsGroup, 19, 0, 2, 2)
+                
+        self.InfectionIntervalsGroup.layout = QGridLayout(self)
+        self.InfectionIntervalsGroup.setLayout(self.InfectionIntervalsGroup.layout)      
+        
+        self.IntervalsLabels = []
+        self.IntervalsFields = []
+        self.ProbLabels = []
+        self.ProbFields = []
+        
+        #    DrawIntervals = {4: 0, 13: 0, 24: 0, 42: 100}
+        
+        for i in range(4):
+            if i == 0:
+                Interval = 4
+                p = 0
+            elif i == 1:
+                Interval = 13
+                p = 25
+            elif i == 2:
+                Interval = 24
+                p = 25
+            else:
+                Interval = 42
+                p = 50
+            
+            self.IntervalsLabels.append(QLabel("Interval " + str(i + 1)))
+            self.InfectionIntervalsGroup.layout.addWidget(self.IntervalsLabels[i], 0 + i, 0)
+            
+            self.IntervalsFields.append(QLineEdit(str(Interval)))
+            self.InfectionIntervalsGroup.layout.addWidget(self.IntervalsFields[i], 0 + i, 1)
+            
+            self.ProbLabels.append(QLabel("Probability " + str(i + 1)))
+            self.InfectionIntervalsGroup.layout.addWidget(self.ProbLabels[i], 0 + i, 2)
+            
+            self.ProbFields.append(QLineEdit(str(p)))
+            self.InfectionIntervalsGroup.layout.addWidget(self.ProbFields[i], 0 + i, 3)
+        
+        self.NewWorksheetEachPatientField = QCheckBox("New Worksheet Each Patient")
+        self.SetupTab.layout.addWidget(self.NewWorksheetEachPatientField, 0, 2) 
+        self.NewWorksheetEachPatientField.setChecked(True)
+        
+        self.RunButton = QPushButton("Run Simulation")
+        self.SetupTab.layout.addWidget(self.RunButton, 30, 0)
+        
+        self.RunButton.clicked.connect(Run)
+        
+        self.SetupTabStatusBar = QStatusBar()
+        self.SetupTabStatusBar.setMaximumHeight(30)
+        self.SetupTabStatusBar.setStyleSheet("background: lightgray")
+        self.SetupTabStatusBar.showMessage("T-Founder Ready")
+        
+        # addWidget(int fromRow, int fromColumn, int rowSpan, int columnSpan)
+        self.SetupTab.layout.addWidget(self.SetupTabStatusBar, 31, 0, 1, 4) 
+        
+        # Add tabs to widget
+        self.layout.addWidget(self.tabs)
+        self.setLayout(self.layout)
+        
+        """ Plot Tab"""
+        
+        
+        """ Table Output Tab """
+        
+        
+        """ Console Output Tab """
+        self.ConsoleTab.layout = QVBoxLayout(self)
+        self.ConsoleTab.setLayout(self.ConsoleTab.layout)
+        self.ConsoleTab.layout.setSpacing(0)
+        self.ConsoleTab.layout.setContentsMargins(0, 0, 0, 0) # int LEFT, TOP, RIGHT, BOTTOM
+        
+        self.scrollArea = QtWidgets.QScrollArea(self.ConsoleTab)
+        self.scrollArea.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.scrollArea.setWidgetResizable(True)
+        
+        widget = QWidget()
+        self.scrollArea.setWidget(widget)
+        self.layoutScrollArea = QVBoxLayout(widget)
+        
+        self.ConsoleOutput = QtWidgets.QTextEdit()
+        self.ConsoleOutput.setReadOnly(True)
+        self.ConsoleOutput.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        
+        self.layoutScrollArea.addWidget(self.ConsoleOutput) 
+        
+        self.ConsoleTab.layout.addWidget(self.scrollArea) 
+        
+    def Gen1PatientsChanged(self, text):
+        
+        if int(text) > 4:
+            self.Gen1PatientsField.setText(str(4))
+            text = 4
+        
+        self.NumberOfInfectionCyclesField.setText(text)
+        
+#        Intervals = int(text)
+        
+#        for i in range(Intervals):
+#            self.InfectionIntervalsProbLabel = QLabel("Infection Intervals Probabilities")
+#            self.SetupTab.layout.addWidget(self.InfectionIntervalsProbLabel, 19, 0)
+#            self.ChangeCycleField = QLineEdit("1")
+#            self.SetupTab.layout.addWidget(self.ChangeCycleField, 16, 1)
+        
+    def InfectionUserDefinedChanged(self):
+        if self.InfectionUserDefinedField.isChecked():
+            self.UserDefindedCycleForInfectionField.setReadOnly(False)
+            self.UserDefindedCycleForInfectionField.setStyleSheet("color: black")
+        else:
+            self.UserDefindedCycleForInfectionField.setReadOnly(True)
+            self.UserDefindedCycleForInfectionField.setStyleSheet("color: gray")
+            
+    def BeneficialIncrementChanged(self):
+        if self.BeneficialIncrementField.isChecked():
+            self.SecondBeneficialField.setReadOnly(False)
+            self.SecondBeneficialField.setStyleSheet("color: black")
+        else:
+            self.SecondBeneficialField.setReadOnly(True)
+            self.SecondBeneficialField.setStyleSheet("color: gray")
+            
+    def DeleteriousIncrementChanged(self):
+        if self.DeleteriousIncrementField.isChecked():
+            self.SecondDeleteriousField.setReadOnly(False)
+            self.SecondDeleteriousField.setStyleSheet("color: black")
+        else:
+            self.SecondDeleteriousField.setReadOnly(True)
+            self.SecondDeleteriousField.setStyleSheet("color: gray")
+            
+    
+        
 def main():
     
-    global LastRowAvailable, LastPatient, worksheet, HorizAlign
+    global ConsoleOut, mainWin
     
-    print("\nMain function started: " + str(datetime.now()) + "\n")
-    startTime = datetime.now()
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
+        
+    mainWin = MainWindow()
+    mainWin.show()
+#    mainWin.showMaximized()
     
+    ConsoleOut = mainWin.MainTabBar.ConsoleOutput
+       
     IdentifyMachine()
-
+    
+    sys.exit(app.exec_())
+    
+def SetupInitialParameters():
+    
+    global SimulationTimes, Generations, Gen1Patients, NumberOfInfectionCycles
+    global Cycles, Classes, InitialParticles, ClassOfInitialParticles, InfectionParticles
+    global Matrix, InfectionWarnings, InfectionWarningsCycle, InfectionCycle
+    global BeneficialIncrement, DeleteriousIncrement
+    global FirstBeneficial, SecondBeneficial, FirstDeleterious, SecondDeleterious
+    global MaxParticles
+    global CyclesForDrawing, DrawingWeights, DrawnCycles, ChangeCycle, DrawIntervals
+    global DeleteriousProbability, BeneficialProbability, DrawIntervalsKeys
+    global InfectionUserDefined, UserDefindedCycleForInfection
+    global NewWorksheetEachPatient
+    
+    SimulationTimes = int(mainWin.MainTabBar.SimulationTimesField.text())
+    Generations = int(mainWin.MainTabBar.GenerationsField.text())
+    Gen1Patients = int(mainWin.MainTabBar.Gen1PatientsField.text())
+    NumberOfInfectionCycles = int(mainWin.MainTabBar.Gen1PatientsField.text())
+    
+    Cycles = int(mainWin.MainTabBar.CyclesField.text())
+    Classes = int(mainWin.MainTabBar.ClassesField.text())
+    InitialParticles = int(mainWin.MainTabBar.InitialParticlesField.text())
+    ClassOfInitialParticles = int(mainWin.MainTabBar.ClassOfInitialParticlesField.text())
+    InfectionParticles = int(mainWin.MainTabBar.InfectionParticlesField.text())
+    MaxParticles = int(mainWin.MainTabBar.MaxParticlesField.text())
+    
+    # TODO make this variables activate or not the second beneficial and deleterious
+    if mainWin.MainTabBar.BeneficialIncrementField.isChecked():
+        BeneficialIncrement = True
+    else:
+        BeneficialIncrement = False
+        
+    if mainWin.MainTabBar.DeleteriousIncrementField.isChecked():
+        DeleteriousIncrement = True
+    else:
+        DeleteriousIncrement = False
+    
+    FirstBeneficial = float(mainWin.MainTabBar.FirstBeneficialField.text())
+    SecondBeneficial = float(mainWin.MainTabBar.SecondBeneficialField.text())
+    FirstDeleterious = float(mainWin.MainTabBar.FirstDeleteriousField.text())
+    SecondDeleterious = float(mainWin.MainTabBar.SecondDeleteriousField.text())
+    
+    ChangeCycle = int(mainWin.MainTabBar.ChangeCycleField.text())
+    
+    if mainWin.MainTabBar.InfectionUserDefinedField.isChecked():
+        InfectionUserDefined = True
+    else:
+        InfectionUserDefined = False
+        
+    UserDefindedCycleForInfection = int(mainWin.MainTabBar.UserDefindedCycleForInfectionField.text())
+        
+    for i in range(4):
+        key = int(mainWin.MainTabBar.IntervalsFields[i].text())
+        value = int(mainWin.MainTabBar.ProbFields[i].text())
+        
+        DrawIntervals.update({key : value})
+    
+#    DrawIntervals = {4: 0, 13: 0, 24: 0, 42: 100}
+    
+    Matrix = []
+    InfectionWarnings = []
+    InfectionWarningsCycle = []
+    InfectionCycle = {}
+    CyclesForDrawing = [] 
+    DrawingWeights = []
+    DrawnCycles = []
+    
+    DeleteriousProbability = [0] * Cycles
+    BeneficialProbability = [0] * Cycles
+    
+    DrawIntervalsKeys = list(DrawIntervals.keys())
+    
+    if mainWin.MainTabBar.NewWorksheetEachPatientField.isChecked():
+        NewWorksheetEachPatient = True
+    else:
+        NewWorksheetEachPatient = False
+    
+def Setup():
+    
     # number of patients at 1st generation is defined by the number of cycles that 
     # occur infection
     #Gen1Patients = InfectionCycle.GetLength(0)
@@ -167,23 +590,6 @@ def main():
     # it has p Patients, Cy lines of Cycles, 
     # defined by the variables at the begginning of the code. 
     
-    worksheet = workbook.add_worksheet()
-    HorizAlign = workbook.add_format()
-    HorizAlign.set_align('center')
-
-    bold = workbook.add_format({'bold': True})
-    LastRowAvailable = 0
-    LastPatient = -1
-
-    # set_column(column1, column2, size)
-    worksheet.set_column(0, 0, 20)
-    worksheet.set_column(2, 2, 8)
-    worksheet.set_column(14, 14, 12)
-    worksheet.set_column(15, 15, 10)
-    worksheet.set_column(16, 16, 13)
-    worksheet.set_column(17, 17, 13)
-    worksheet.set_column(18, 18, 16)
-
     for g in range(Generations):
         Matrix.append([])
         ClassUpParticles.append([])
@@ -235,29 +641,94 @@ def main():
 
     for i in range(InitialParticles):
         Matrix[0][0][0].append(ClassOfInitialParticles)
-      
-#    print(Matrix[0][0][0][0])    
-#        
-#    for i in range(InitialParticles):
-#        print(Matrix[0][0][0][i].id)
+    
+def ConfigureExcel():
+    
+    global MaxWorksheetSize, workbook, worksheet, HorizAlign, LastRowAvailable, bold
 
-    RunSimulation()
+    MaxWorksheetSize = 1000000 # Max number of lines per worksheet
     
-    print("\nMain function ended: " + str(datetime.now()) + "\n")
-    print("Total run time: " + str(datetime.now() - startTime) + "\n")
-    print("Date: " + str(datetime.now()) + "\n")
-    print("Python Implementation: " + platform.python_implementation())
+    ExcelFileName = "TFounderSim" + datetime.now().strftime('%d-%m-%Y_%H-%M-%S') + '.xlsx'
+    workbook = xlsxwriter.Workbook(ExcelFileName, {'constant_memory': True})
+    #workbook = xlsxwriter.Workbook(ExcelFileName)
+    worksheet = workbook.add_worksheet()
+    HorizAlign = workbook.add_format()
+    HorizAlign.set_align('center')
     
-#    OutputFile.write("Total run time: " + str(datetime.now() - startTime) + "\n")
-#    OutputFile.write("Date: " + str(datetime.now()) + "\n")
-#    OutputFile.close()
+    bold = workbook.add_format({'bold': True})
+    LastRowAvailable = 0
     
-    # worksheet.write(Row, Column, String, format)
-    LastRowAvailable += 2
-    worksheet.write(LastRowAvailable, 0, "Total run time: " + str(datetime.now() - startTime), bold)
-    worksheet.write(LastRowAvailable + 1, 0, "Date: " + str(datetime.now()), bold)
-    workbook.close()
+    # set_column(column1, column2, size)
+    worksheet.set_column(0, 0, 20)
+    worksheet.set_column(2, 2, 8)
+    worksheet.set_column(14, 14, 12)
+    worksheet.set_column(15, 15, 10)
+    worksheet.set_column(16, 16, 13)
+    worksheet.set_column(17, 17, 13)
+    worksheet.set_column(18, 18, 16)
+    
+    worksheet.write(LastRowAvailable, 0, "Generations", bold)
+    worksheet.write(LastRowAvailable, 1, Generations)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "Gen1Patients", bold)
+    worksheet.write(LastRowAvailable, 1, Gen1Patients)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "InfectionCycle", bold)
+    worksheet.write(LastRowAvailable, 1, str(InfectionCycle))
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "Cycles", bold)
+    worksheet.write(LastRowAvailable, 1, Cycles)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "InitialParticles", bold)
+    worksheet.write(LastRowAvailable, 1, InitialParticles)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "ClassOfInitialParticles", bold)
+    worksheet.write(LastRowAvailable, 1, ClassOfInitialParticles)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "InfectionParticles", bold)
+    worksheet.write(LastRowAvailable, 1, InfectionParticles)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "MaxParticles", bold)
+    worksheet.write(LastRowAvailable, 1, MaxParticles)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "First Beneficial", bold)
+    worksheet.write(LastRowAvailable, 1, FirstBeneficial)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "Second Beneficial", bold)
+    worksheet.write(LastRowAvailable, 1, SecondBeneficial)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "First Deleterious", bold)
+    worksheet.write(LastRowAvailable, 1, FirstDeleterious)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "Second Deleterious", bold)
+    worksheet.write(LastRowAvailable, 1, SecondDeleterious)
+    LastRowAvailable += 1
+    worksheet.write(LastRowAvailable, 0, "Change Cycle", bold)
+    worksheet.write(LastRowAvailable, 1, ChangeCycle)
+    LastRowAvailable += 1
+    
+def MakeNewWorksheet():
+    
+    global MaxWorksheetSize, workbook, worksheet, HorizAlign, LastRowAvailable, bold, LastPatient
+    
+    worksheet = workbook.add_worksheet()
+    
+    HorizAlign = workbook.add_format()
+    HorizAlign.set_align('center')
 
+    bold = workbook.add_format({'bold': True})
+    LastRowAvailable = 0
+    LastPatient = -1
+
+    # set_column(column1, column2, size)
+    worksheet.set_column(0, 0, 20)
+    worksheet.set_column(2, 2, 8)
+    worksheet.set_column(14, 14, 12)
+    worksheet.set_column(15, 15, 10)
+    worksheet.set_column(16, 16, 13)
+    worksheet.set_column(17, 17, 13)
+    worksheet.set_column(18, 18, 16)
+    
 def FillDeleteriousArray(FirstProbability, SecondProbability, ChangeCycle):
     for i in range(Cycles):
         if i <= ChangeCycle:
@@ -272,7 +743,7 @@ def FillDeleteriousArrayWithIncrement(InitialProbability, Increment):
             DeleteriousProbability[i] = InitialProbability
             
         else:
-            if (DeleteriousProbability[i - 1] + Increment <= (1 - BeneficialProbability.GetLength(0))):
+            if (DeleteriousProbability[i - 1] + Increment <= (1 - len(BeneficialProbability))):
                 DeleteriousProbability[i] = DeleteriousProbability[i - 1] + Increment
             
             else:
@@ -290,63 +761,49 @@ def FillBeneficialArrayWithIncrement(InitialProbability, Increment):
         if i == 0:
             BeneficialProbability[i] = InitialProbability
         else:
-            if (BeneficialProbability[i - 1] + Increment <= (1 - DeleteriousProbability.GetLength(0))):
+            if (BeneficialProbability[i - 1] + Increment <= (1 - len(DeleteriousProbability))):
                 BeneficialProbability[i] = BeneficialProbability[i - 1] + Increment
             else:
                 BeneficialProbability[i] = BeneficialProbability[i - 1]
 
- 
-def RunSimulation():
+def Run():
     
-    global LastPatient, workbook, worksheet, HorizAlign, ExcelFileName, LastRowAvailable, MaxR
+    SetupInitialParameters()
+    
+    for i in range(SimulationTimes):
+        RunSimulation(i)
+ 
+def RunSimulation(SimulationNumber):
+    
+    global LastPatient, workbook, worksheet, HorizAlign, LastRowAvailable, MaxR, Simulating
+    
+    ConfigureExcel() 
+    MakeNewWorksheet()
+    
+    ConsoleOut = mainWin.MainTabBar.ConsoleOutput
+    
+    mainWin.MainTabBar.SetupTabStatusBar.setStyleSheet("background: yellow")
+    mainWin.MainTabBar.SetupTabStatusBar.showMessage("Simulation " + str(SimulationNumber + 1) + "/" + str(SimulationTimes) + " Running")
+    
+    ConsoleOut.append("Simulation started: " + str(datetime.now()))
+    ConsoleOut.append("")
+    
+    startTime = datetime.now()
+    
+    Setup()
     
     # Populates the CyclesForDrawing array with number of cycles
     for i in range(Cycles):
         CyclesForDrawing.append(i)
     
-#    pool = multiprocessing.Pool(multiprocessing.cpu_count())
-    
-    # print("RunSimulation function started: " + str(datetime.now()) + "\n")
-    
     # Main Loop to create more particles on the next Cycles from the Cycle Zero.
     # Each matrix position will bring a value. This value will be mutiplied by its own class number. 
     for g in range(Generations):
-        
-#        if g > 8: 
-#            # writes excel file to disk and creates another one            
-#            # to avoid too large files
-#            workbook.close()
-#            
-#            if g == 9:
-#                # remove ".xlsx" from the string, 
-#                # in the first time we a create another file
-#                ExcelFileName = ExcelFileName[:-5]
-#        
-#            else:
-#                # remove "_Gx.xlsx" from the string
-#                ExcelFileName = ExcelFileName[:-8]
-#                
-#            ExcelFileName += "_G" + str(g) + ".xlsx"
-#            
-#            workbook = xlsxwriter.Workbook(ExcelFileName, {'constant_memory': True})
-#            worksheet = workbook.add_worksheet()
-#            
-#            HorizAlign = workbook.add_format()
-#            HorizAlign.set_align('center')
-#
-#            worksheet.set_column(0, 0, 20)
-#            worksheet.set_column(14, 14, 12)
-#            worksheet.set_column(15, 15, 10)
-#            worksheet.set_column(16, 16, 13)
-#            worksheet.set_column(17, 17, 13)
-#            worksheet.set_column(18, 18, 16)
-#            
-#            LastRowAvailable = 0
             
         for p in range(pow(Gen1Patients, g)): # pow(Gen1Patients, g) gives the generation size
             
             print("Patient started: GEN " + str(g) + " - P " + str(p))
-#            OutputFile.write("Patient started: GEN " + str(g) + " - P " + str(p) + "\n")
+            ConsoleOut.append("Patient started: GEN " + str(g) + " - P " + str(p))
 #            worksheet.write(LastRowAvailable + 1, 0, "Patient:")
             worksheet.write(LastRowAvailable + 1, 1, "Generation: ")
             worksheet.write(LastRowAvailable + 1, 2, str(g))
@@ -373,9 +830,35 @@ def RunSimulation():
 
                 LastRowAvailable = 0
             
-        LastPatient = -1
-            
-#        pool.map(RunPatient, [(g, 0), (g, 1), (g, 2), (g, 3)])    
+        LastPatient = -1 
+        
+    CyclesForDrawing.clear()
+        
+    ConsoleOut.append("")
+    ConsoleOut.append("Simulation ended: " + str(datetime.now()))
+    ConsoleOut.append("Total run time: " + str(datetime.now() - startTime))
+    ConsoleOut.append("Date: " + str(datetime.now()))
+    ConsoleOut.append("Python Implementation: " + platform.python_implementation())
+    ConsoleOut.append("")
+    ConsoleOut.append("*******************************************************")
+    ConsoleOut.append("")
+    
+    # worksheet.write(Row, Column, String, format)
+    LastRowAvailable += 2
+    worksheet.write(LastRowAvailable, 0, "Total run time: " + str(datetime.now() - startTime), bold)
+    worksheet.write(LastRowAvailable + 1, 0, "Date: " + str(datetime.now()), bold)
+    workbook.close()
+        
+    mainWin.MainTabBar.SetupTabStatusBar.setStyleSheet("background: lightgreen")
+    mainWin.MainTabBar.SetupTabStatusBar.showMessage("Simulation " + str(SimulationNumber + 1) + "/" + str(SimulationTimes) + " Ended")
+    
+    # if the simulation takes less than 1 second to process
+    # we may lose (overwrite) Excel files, so, we wait 1 second before next simulation
+    # TODO it can't be a time.sleep because it freezes the program
+    time.sleep(1.0) 
+        
+    mainWin.MainTabBar.SetupTabStatusBar.setStyleSheet("background: lightgray")
+    mainWin.MainTabBar.SetupTabStatusBar.showMessage("T-Founder Ready")
      
 def RunPatient(g, p):
     
@@ -507,7 +990,6 @@ def PickRandomParticlesForInfection(g, p, Cy, cycleForInfection):
     ParticlesInThisCycle = len(Matrix[g][p][Cy])
     
     # TODO remove selected infection particles from the Matrix, or 
-    # copy the same particle, to keep the id
     
     if (ParticlesInThisCycle > 0):
         if(ParticlesInThisCycle >= InfectionParticles):
@@ -521,6 +1003,7 @@ def PickRandomParticlesForInfection(g, p, Cy, cycleForInfection):
     # if there are no particles for infection, there is no infection
     if (NoParticlesForInfection):
         print("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.")
+        ConsoleOut.append("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.")
 #        OutputFile.write("Patient " + str(p) + " Cycle " + str(Cy) + " has no particles.") 
         text = "G" + str(g) + " " + "P" + str(p) + " Cycle " + str(Cy) + " has no particles."
         InfectionWarnings.append(text)
@@ -685,36 +1168,44 @@ def memory():
     
 def IdentifyMachine():
     
-    global LastRowAvailable
+#    global LastRowAvailable
     
-    worksheet.write(LastRowAvailable, 0, "Python Implementation", bold)
-    LastRowAvailable += 1
-    
-    worksheet.write(LastRowAvailable, 0, platform.python_implementation(), bold)
-    LastRowAvailable += 1
+#    worksheet.write(LastRowAvailable, 0, "Python Implementation", bold)
+#    LastRowAvailable += 1
+#    
+#    worksheet.write(LastRowAvailable, 0, platform.python_implementation(), bold)
+#    LastRowAvailable += 1
 
     try:
         import cpuinfo
         print("CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
-        worksheet.write(LastRowAvailable, 0, "CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
-        LastRowAvailable += 1
+        ConsoleOut.append("CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
+#        worksheet.write(LastRowAvailable, 0, "CPU: " + cpuinfo.cpu.info[0]['ProcessorNameString'])
+#        LastRowAvailable += 1
     except:
         print("No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
-        worksheet.write(LastRowAvailable, 0, "No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
-        LastRowAvailable += 1
+        ConsoleOut.append("No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
+#        worksheet.write(LastRowAvailable, 0, "No cpuinfo.py module. Download it at https://github.com/pydata/numexpr/blob/master/numexpr/cpuinfo.py")
+#        LastRowAvailable += 1
         
     print("Processor: " + platform.processor())
     print("Architecture (32 or 64 bits): " + platform.machine())
     print("OS: " + platform.platform())
     
-    worksheet.write(LastRowAvailable, 0, "Processor: " + platform.processor())
-    LastRowAvailable += 1
-    worksheet.write(LastRowAvailable, 0, "Architecture (32 or 64 bits): " + platform.machine())
-    LastRowAvailable += 1
-    worksheet.write(LastRowAvailable, 0, "OS: " + platform.platform() + "\n")
-    LastRowAvailable += 1
+    ConsoleOut.append("Processor: " + platform.processor())
+    ConsoleOut.append("Architecture (32 or 64 bits): " + platform.machine())
+    ConsoleOut.append("OS: " + platform.platform())
+    ConsoleOut.append("")
+    
+#    worksheet.write(LastRowAvailable, 0, "Processor: " + platform.processor())
+#    LastRowAvailable += 1
+#    worksheet.write(LastRowAvailable, 0, "Architecture (32 or 64 bits): " + platform.machine())
+#    LastRowAvailable += 1
+#    worksheet.write(LastRowAvailable, 0, "OS: " + platform.platform() + "\n")
+#    LastRowAvailable += 1
         
-main()
+if __name__ == "__main__":
+    main()
 
 # TODO fazer gráficos com frequência relativa: porcentagem de partículas em cada classe
 # TODO gerar gráfico boxplot com R Max (Fig.14 pré-dissertação).
