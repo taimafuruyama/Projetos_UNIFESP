@@ -15,8 +15,9 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, QDialog, QPushButton
 from PyQt5.QtWidgets import QFileDialog, QTabWidget, QVBoxLayout, QTableWidget, QTableWidgetItem
 from PyQt5.QtWidgets import QStatusBar, QCheckBox, QVBoxLayout, QComboBox, QSpinBox, QLineEdit
-from PyQt5.QtWidgets import QGroupBox
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtWidgets import QGroupBox, QTableView, QAbstractItemView
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtCore import QSize, Qt, QAbstractTableModel
 
 SimulationTimes = None
 
@@ -115,6 +116,8 @@ LastPatient = -1
 # Qt
 mainWin = None
 ConsoleOut = None
+TableOutput = None
+TableView = None
 
 class MainWindow(QMainWindow):
     
@@ -436,8 +439,40 @@ class TabBar(QWidget):
         self.TableTab.layout = QVBoxLayout(self)
         self.TableTab.setLayout(self.TableTab.layout)
         
-        self.TableTab.table = QTableWidget(50, 20, self)
-        self.TableTab.layout.addWidget(self.TableTab.table)
+        self.Data = QStandardItemModel(0, 10 , self)
+        self.Data.setHorizontalHeaderLabels(['Cycle', 'R0', 'R1', 'R2', 'R3',
+                                             'R4', 'R5', 'R6', 'R7', 'R8', 'R9',
+                                             'R10', 'Cycle Particles', 'Mi',
+                                             'Particles Up', 'Particles Up - %',
+                                             'Particles Down', 'Particles Down - %'])
+        
+    
+        #item = QStandardItem(str(5))
+        
+        '''List = []
+        
+        for i in range(4):
+            List.append(QStandardItem(str(i)))
+        
+        self.Data.appendRow(List)'''
+        
+        #for i in range(4):
+         #   self.Data.setItem(i, 0, item);
+        
+        self.table = QTableView(self)
+        self.table.setModel(self.Data)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.TableTab.layout.addWidget(self.table)
+        
+        #self.table.setColumnWidth(1, 50)
+        self.table.resizeColumnsToContents()
+        
+        #TODO Save to Excel button
+        self.TableTab.SaveToExcelButton = QPushButton("Save to Excel")
+        self.TableTab.layout.addWidget(self.TableTab.SaveToExcelButton)
+        
+        #self.TableTab.table.setItem(0,0, QTableWidgetItem("Cell (1,1)"))
         
         
         """ Console Output Tab """
@@ -516,7 +551,7 @@ class TabBar(QWidget):
             
 def main():
     
-    global ConsoleOut, mainWin
+    global ConsoleOut, mainWin, TableOutput, TableView
     
     app = QtCore.QCoreApplication.instance()
     if app is None:
@@ -527,6 +562,8 @@ def main():
 #    mainWin.showMaximized()
     
     ConsoleOut = mainWin.MainTabBar.ConsoleOutput
+    TableOutput = mainWin.MainTabBar.Data
+    TableView = mainWin.MainTabBar.table
        
     IdentifyMachine()
     
@@ -833,6 +870,9 @@ def RunSimulation(SimulationNumber):
             print("Patient started: GEN " + str(g) + " - P " + str(p))
             ConsoleOut.append("Patient started: GEN " + str(g) + " - P " + str(p))
 #            worksheet.write(LastRowAvailable + 1, 0, "Patient:")
+            TableOutput.appendRow(QStandardItem("Generation: " + str(g)))
+            TableOutput.appendRow(QStandardItem("Patient: " + str(p)))
+            
             worksheet.write(LastRowAvailable + 1, 1, "Generation: ")
             worksheet.write(LastRowAvailable + 1, 2, str(g))
             worksheet.write(LastRowAvailable + 1, 3, "Patient: ")
@@ -871,6 +911,14 @@ def RunSimulation(SimulationNumber):
     ConsoleOut.append("*******************************************************")
     ConsoleOut.append("")
     
+    TableOutput.appendRow(QStandardItem("Simulation ended: " + str(datetime.now())))
+    TableOutput.appendRow(QStandardItem("Total run time: " + str(datetime.now() - startTime)))
+    TableOutput.appendRow(QStandardItem("Date: " + str(datetime.now())))
+    TableOutput.appendRow(QStandardItem("Python Implementation: " + platform.python_implementation()))
+    
+    TableView.resizeColumnsToContents()
+    TableView.resizeRowsToContents()
+        
     # worksheet.write(Row, Column, String, format)
     LastRowAvailable += 2
     worksheet.write(LastRowAvailable, 0, "Total run time: " + str(datetime.now() - startTime), bold)
@@ -1129,36 +1177,61 @@ def SaveData(g, p, Cy):
             MaxR = 999
 #            MaxR = str(GetMaxR(ClassCount)).replace(str(0), str(numpy.NaN))
     
+    # variable to store row and write to Qt table
+    Row = []
+    
+    Row.append(QStandardItem(str(Cy)))
+    
     for R in range(Classes):
         # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
         worksheet.write(LastRowAvailable, R + 1, ClassCount[R], HorizAlign)
+        Row.append(QStandardItem(str(ClassCount[R])))
         
     worksheet.write(LastRowAvailable, 0, Cy, HorizAlign)
+    
     worksheet.write(LastRowAvailable, 12, len(Matrix[g][p][Cy]), HorizAlign)
+    Row.append(QStandardItem(str(len(Matrix[g][p][Cy]))))
     
     Mi = GetMi(ClassCount, len(Matrix[g][p][Cy]))
     worksheet.write(LastRowAvailable, 13, Mi, HorizAlign)
+    Row.append(QStandardItem(str(Mi)))
         
     worksheet.write(LastRowAvailable, 14, ClassUpParticles[g][p][Cy], HorizAlign)
     worksheet.write(LastRowAvailable, 15, PercentageOfParticlesUp, HorizAlign)
     worksheet.write(LastRowAvailable, 16, ClassDownParticles[g][p][Cy], HorizAlign)
     worksheet.write(LastRowAvailable, 17, PercentageOfParticlesDown, HorizAlign)
+    
+    Row.append(QStandardItem(str(ClassUpParticles[g][p][Cy])))
+    Row.append(QStandardItem(str(PercentageOfParticlesUp)))
+    Row.append(QStandardItem(str(ClassDownParticles[g][p][Cy])))
+    Row.append(QStandardItem(str(PercentageOfParticlesDown)))
         
 #    LastRowAvailable += 1
+    
+    TableOutput.appendRow(Row)
     
     if Cy == Cycles - 1:
         LastRowAvailable += 2
         
         worksheet.write(LastRowAvailable, 0, "Max R at Cycle 0")
         worksheet.write(LastRowAvailable, 1, MaxR, HorizAlign)
+        
+        TableOutput.appendRow(QStandardItem("Max R at Cycle 0: " + str(MaxR)))
+        
         LastRowAvailable += 1
                 
         for i in range(len(InfectionWarnings)):
             worksheet.write(LastRowAvailable, 0, InfectionWarnings[i])
             worksheet.write(LastRowAvailable, 2, InfectionWarningsCycle[i])
+            
+            TableOutput.appendRow(QStandardItem(InfectionWarnings[i]))
+            #TableOutput.appendRow(QStandardItem(InfectionWarningsCycle[i]))
+            
             LastRowAvailable += 1
         
     LastPatient = p
+    
+    
     
 def GetMi(ClassCount, CycleParticles):
     
