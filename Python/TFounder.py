@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import QStatusBar, QCheckBox, QVBoxLayout, QComboBox, QSpin
 from PyQt5.QtWidgets import QGroupBox, QTableView, QAbstractItemView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import QSize, Qt, QAbstractTableModel
+from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool, QObject, pyqtSignal
 
 SimulationTimes = None
 
@@ -119,29 +120,68 @@ ConsoleOut = None
 TableOutput = None
 TableView = None
 
+class WorkerSignals(QObject):
+    
+    started = pyqtSignal() # no data
+    finished = pyqtSignal() # no data
+    error = pyqtSignal(tuple) # `tuple` (exctype, value, traceback.format_exc() )
+    result = pyqtSignal(object) # `object` data returned from processing, anything
+    progress = pyqtSignal(int) # `int` indicating % progress 
+ 
+class Worker(QRunnable):
+    '''
+    Worker thread
+    '''
+    def __init__(self):
+        super(Worker, self).__init__()
+        self.signals = WorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        
+        self.signals.started.emit()        
+        Run()
+        
+        try:
+            pass
+        except:
+            pass
+        else:
+            pass
+#            self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
+
 class MainWindow(QMainWindow):
+    
+    SimulationStatus = pyqtSignal(int)
     
     def __init__(self):
         QMainWindow.__init__(self)
+        
+        self.threadpool = QThreadPool()
+        self.worker = Worker()
 
-        self.setMinimumSize(QSize(1200, 950)) # TODO open maximized
-        self.setWindowTitle("T-Founder 0.0.1") # TODO not "2" actually, change this later
+#        self.setMinimumSize(QSize(1200, 950)) # TODO open maximized
+#        self.showMaximized()
+        self.setWindowState(QtCore.Qt.WindowMaximized)
+        self.setWindowTitle("T-Founder") # TODO not "2" actually, change this later
             
         Menu = self.menuBar()
         
         file_menu = Menu.addMenu('File')
-        open_action = QtWidgets.QAction('Open', self)
+#        open_action = QtWidgets.QAction('Open', self)
         quit_action = QtWidgets.QAction('Quit', self)
-        file_menu.addAction(open_action)
+#        file_menu.addAction(open_action)
         file_menu.addAction(quit_action)
         quit_action.triggered.connect(self.close)
-        open_action.triggered.connect(self.OpenFiles)
+#        open_action.triggered.connect(self.OpenFiles)
 
-        edit_menu = Menu.addMenu('Edit')
-        undo_action = QtWidgets.QAction('Undo', self)
-        redo_action = QtWidgets.QAction('Redo', self)
-        edit_menu.addAction(undo_action)
-        edit_menu.addAction(redo_action)
+#        edit_menu = Menu.addMenu('Edit')
+#        undo_action = QtWidgets.QAction('Undo', self)
+#        redo_action = QtWidgets.QAction('Redo', self)
+#        edit_menu.addAction(undo_action)
+#        edit_menu.addAction(redo_action)
         
         help_menu = Menu.addMenu('Help')
         about_action = QtWidgets.QAction('About', self)
@@ -152,7 +192,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(centralWidget)
          
         self.gridLayout = QGridLayout(self)   
-        self.setLayout(self.gridLayout)
+#        self.setLayout(self.gridLayout)
         self.gridLayout.setSpacing(0)
         self.gridLayout.setContentsMargins(0, 0, 0, 0) # int LEFT, TOP, RIGHT, BOTTOM
         
@@ -163,29 +203,66 @@ class MainWindow(QMainWindow):
         self.MainTabBar = TabBar(self)
 #        MainTabBar.setFixedSize(QSize(800, 800))
         self.MainTabBar.setMinimumWidth(800)
-        self.gridLayout.addWidget(self.MainTabBar, 0, 1)
+        self.gridLayout.addWidget(self.MainTabBar, 1, 0)
         
-    def OpenFiles(self):
-      OpenFileDialog = QFileDialog()
-      OpenFileDialog.setFileMode(QFileDialog.AnyFile)
-      
-      filenames = [] # TODO use QStringList?
-
-      if OpenFileDialog.exec_():
-          filenames = OpenFileDialog.selectedFiles()
+        """"""""""""""""""""""""""""""
+        
+        """ Run Simulation Button  """
+        
+        """"""""""""""""""""""""""""""
+                
+        self.RunButton = QPushButton("Run Simulation")
+        self.gridLayout.addWidget(self.RunButton, 0, 0)
+        self.RunButton.clicked.connect(self.RunWorker)
+#        self.RunButton.clicked.connect(Run)
+        
+        self.StatusBar = QStatusBar()
+        self.StatusBar.setMaximumHeight(30)
+        self.StatusBar.setStyleSheet("background: lightgray")
+        self.StatusBar.showMessage("T-Founder Ready")
+        
+        # addWidget(int fromRow, int fromColumn, int rowSpan, int columnSpan)
+        self.gridLayout.addWidget(self.StatusBar, 31, 0, 1, 4) 
+               
+    def RunWorker(self):
+        
+        self.StatusBar.setStyleSheet("background: yellow")
+        self.StatusBar.showMessage("Simulations running")
+        
+        # here we reassign self.worker, because it is deleted after a thread
+        # is finished
+        self.worker = Worker()
+        
+        self.threadpool.start(self.worker)
+        
+        self.worker.signals.finished.connect(self.SimComplete)
+        
+    def SimComplete(self):
+        
+        self.StatusBar.setStyleSheet("background: lightgreen")
+        self.StatusBar.showMessage("Simulations complete. Excel file with results saved")
+        
+        # if the simulation takes less than 1 second to process
+        # we may lose (overwrite) Excel files, so, we wait 1 second before next simulation
+        # TODO it can't be a time.sleep because it freezes the program
+        time.sleep(1.0) 
+        
+        self.StatusBar.setStyleSheet("background: lightgray")
+        self.StatusBar.showMessage("T-Founder Ready")
+        print("Simulation Complete")
         
     def AboutDialog(self):
        AboutDialog = QDialog(None, QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowTitleHint)
-       AboutDialog.setMinimumSize(QSize(500, 700)) 
+       AboutDialog.setMinimumSize(QSize(500, 400)) 
        
        gridLayout = QGridLayout(AboutDialog)   
        AboutDialog.setLayout(gridLayout)  
        
-       TitleText = "T-Founder 0.0.1"
+       TitleText = "T-Founder"
        
        InfoText = '''(C) 2019 T-Founder'''
        
-       DevelopersText = '''Developers
+       DevelopersText = '''Developers:
        
        Taimá Naomi Furuyama
        
@@ -207,7 +284,7 @@ class MainWindow(QMainWindow):
        gridLayout.addWidget(TitelLabel, 0, 0)
        
        InfoLabel = QLabel(InfoText, AboutDialog) 
-       InfoLabel.setFixedSize(QSize(500, 300))
+       InfoLabel.setFixedSize(QSize(500, 50))
        InfoLabel.setAlignment(QtCore.Qt.AlignCenter) 
        InfoLabel.setStyleSheet("text-align: justify")
        gridLayout.addWidget(InfoLabel, 1, 0)
@@ -235,6 +312,8 @@ class TabBar(QWidget):
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
         self.layout = QVBoxLayout(self)
+        
+        self.parent = parent
          
         # Initialize tab screen
         self.tabs = QTabWidget()
@@ -251,7 +330,11 @@ class TabBar(QWidget):
         self.tabs.addTab(self.TableTab,"Table Output")
         self.tabs.addTab(self.ConsoleTab,"Console Output")
         
-        """ Setup Tab"""
+        """"""""""""""""""
+        
+        """ Setup Tab  """
+        
+        """"""""""""""""""
         
         self.SetupTab.layout = QGridLayout(self)
         self.SetupTab.setLayout(self.SetupTab.layout)
@@ -261,7 +344,7 @@ class TabBar(QWidget):
         
         self.SimulationTimesLabel = QLabel("Simulations")
         self.SetupTab.layout.addWidget(self.SimulationTimesLabel, 0, 0)
-        self.SimulationTimesField = QLineEdit("5")
+        self.SimulationTimesField = QLineEdit("1")
         self.SetupTab.layout.addWidget(self.SimulationTimesField, 0, 1)
         
         self.GenerationsLabel = QLabel("Generations")
@@ -406,35 +489,52 @@ class TabBar(QWidget):
         self.SetupTab.layout.addWidget(self.NewWorksheetEachPatientField, 0, 2) 
         self.NewWorksheetEachPatientField.setChecked(True)
         
-        self.RunButton = QPushButton("Run Simulation")
-        self.SetupTab.layout.addWidget(self.RunButton, 30, 0)
-        
-        self.RunButton.clicked.connect(Run)
-        
-        self.SetupTabStatusBar = QStatusBar()
-        self.SetupTabStatusBar.setMaximumHeight(30)
-        self.SetupTabStatusBar.setStyleSheet("background: lightgray")
-        self.SetupTabStatusBar.showMessage("T-Founder Ready")
-        
-        # addWidget(int fromRow, int fromColumn, int rowSpan, int columnSpan)
-        self.SetupTab.layout.addWidget(self.SetupTabStatusBar, 31, 0, 1, 4) 
-        
         # Add tabs to widget
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
         
-        """ Plot Tab"""
+        """"""""""""""""""
+        
+        """ Plot Tab """
+        
+        """"""""""""""""""
         
         self.PlotTab.layout = QVBoxLayout(self)
         self.PlotTab.setLayout(self.PlotTab.layout)
         
-        self.figure = Figure()
+        self.classes = ['R0', 'R1', 'R2', 'R3', 'R4', 'R5',
+                               'R6', 'R7', 'R8', 'R9', 'R10']
+        self.values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        
+        self.PlotTab.x = range(11)
+        self.PlotTab.labels = self.classes
+        
+        #self.PlotTab.width = 0.5  # the width of the bars
+        
+        self.figure, self.axis = plt.subplots()
         self.canvas = FigureCanvasQTAgg(self.figure)
-        self.axis = self.figure.add_subplot(111)
-
+        
+        self.axis.bar(self.classes, self.values)
+        
+        self.axis.set_title("Percentage of classes")
+        self.axis.set_ylabel("% of Classes")
+        self.axis.set_xlabel("R Classes")
+        self.axis.set_xticks(self.PlotTab.x)
+        
+        start, end = 0, 110
+        self.axis.yaxis.set_ticks(range(start, end, 10))        
+        
+        self.axis.set_xticklabels(self.PlotTab.labels)
+        
+        self.axis.yaxis.grid(which="major", color='lightgray', linestyle='-', linewidth=1)
+        
         self.PlotTab.layout.addWidget(self.canvas)
-                
+           
+        """"""""""""""""""""""""
+        
         """ Table Output Tab """
+        
+        """"""""""""""""""""""""
         
         self.TableTab.layout = QVBoxLayout(self)
         self.TableTab.setLayout(self.TableTab.layout)
@@ -469,13 +569,17 @@ class TabBar(QWidget):
         self.table.resizeColumnsToContents()
         
         #TODO Save to Excel button
-        self.TableTab.SaveToExcelButton = QPushButton("Save to Excel")
-        self.TableTab.layout.addWidget(self.TableTab.SaveToExcelButton)
+#        self.TableTab.SaveToExcelButton = QPushButton("Save to Excel")
+#        self.TableTab.layout.addWidget(self.TableTab.SaveToExcelButton)
         
         #self.TableTab.table.setItem(0,0, QTableWidgetItem("Cell (1,1)"))
         
+        """"""""""""""""""""""""""
         
         """ Console Output Tab """
+        
+        """"""""""""""""""""""""""
+        
         self.ConsoleTab.layout = QVBoxLayout(self)
         self.ConsoleTab.setLayout(self.ConsoleTab.layout)
         self.ConsoleTab.layout.setSpacing(0)
@@ -552,6 +656,7 @@ class TabBar(QWidget):
 def main():
     
     global ConsoleOut, mainWin, TableOutput, TableView
+    global PlotClasses, PlotData, PlotOutput, PlotCanvas
     
     app = QtCore.QCoreApplication.instance()
     if app is None:
@@ -564,6 +669,10 @@ def main():
     ConsoleOut = mainWin.MainTabBar.ConsoleOutput
     TableOutput = mainWin.MainTabBar.Data
     TableView = mainWin.MainTabBar.table
+    PlotClasses = mainWin.MainTabBar.classes
+    PlotData = mainWin.MainTabBar.values
+    PlotOutput = mainWin.MainTabBar.axis
+    PlotCanvas = mainWin.MainTabBar.canvas
        
     IdentifyMachine()
     
@@ -847,9 +956,6 @@ def RunSimulation(SimulationNumber):
     
     ConsoleOut = mainWin.MainTabBar.ConsoleOutput
     
-    mainWin.MainTabBar.SetupTabStatusBar.setStyleSheet("background: yellow")
-    mainWin.MainTabBar.SetupTabStatusBar.showMessage("Simulation " + str(SimulationNumber + 1) + "/" + str(SimulationTimes) + " Running")
-    
     ConsoleOut.append("Simulation started: " + str(datetime.now()))
     ConsoleOut.append("")
     
@@ -918,23 +1024,14 @@ def RunSimulation(SimulationNumber):
     
     TableView.resizeColumnsToContents()
     TableView.resizeRowsToContents()
+    
+    TableView.scrollToBottom()
         
     # worksheet.write(Row, Column, String, format)
     LastRowAvailable += 2
     worksheet.write(LastRowAvailable, 0, "Total run time: " + str(datetime.now() - startTime), bold)
     worksheet.write(LastRowAvailable + 1, 0, "Date: " + str(datetime.now()), bold)
     workbook.close()
-        
-    mainWin.MainTabBar.SetupTabStatusBar.setStyleSheet("background: lightgreen")
-    mainWin.MainTabBar.SetupTabStatusBar.showMessage("Simulation " + str(SimulationNumber + 1) + "/" + str(SimulationTimes) + " Ended")
-    
-    # if the simulation takes less than 1 second to process
-    # we may lose (overwrite) Excel files, so, we wait 1 second before next simulation
-    # TODO it can't be a time.sleep because it freezes the program
-    time.sleep(1.0) 
-        
-    mainWin.MainTabBar.SetupTabStatusBar.setStyleSheet("background: lightgray")
-    mainWin.MainTabBar.SetupTabStatusBar.showMessage("T-Founder Ready")
      
 def RunPatient(g, p):
     
@@ -1126,12 +1223,13 @@ def InfectPatients(InfectedParticles, g, p, Cy, cycleForInfection):
 #    LastRowAvailable += 1
 
 def SaveData(g, p, Cy):
-    global LastRowAvailable, LastPatient, MaxR
+    global LastRowAvailable, LastPatient, MaxR, PlotData, PlotOutput
     
     Mi = 0
     
     PercentageOfParticlesUp = 0.0
     PercentageOfParticlesDown = 0.0
+    PercentageOfParticlesPerClass = [0] * (Classes + 1)
     
     LastRowAvailable += 1
     
@@ -1182,10 +1280,42 @@ def SaveData(g, p, Cy):
     
     Row.append(QStandardItem(str(Cy)))
     
+    #PlotData.clear()
+    
     for R in range(Classes):
         # fill a line in the Excel file with number of particles from R0, R1, R2 .... R10
         worksheet.write(LastRowAvailable, R + 1, ClassCount[R], HorizAlign)
         Row.append(QStandardItem(str(ClassCount[R])))
+        
+        if(len(Matrix[g][p][Cy]) > 0):
+            PercentageOfParticlesPerClass[R] = (ClassCount[R] / len(Matrix[g][p][Cy])) * 100
+            
+        else:
+            PercentageOfParticlesPerClass[R] = 0.0
+        
+#        print(str(R) + " " + str(PercentageOfParticlesPerClass[R]))
+        
+        #PlotData.append(PercentageOfParticlesPerClass[R])
+        PlotData[R] = PercentageOfParticlesPerClass[R]
+        
+    
+    PlotOutput.clear()
+    
+    PlotOutput.bar(PlotClasses, PlotData)
+
+    PlotOutput.set_title("Percentage of classes - Generation " 
+                         + str(g) + " " 
+                         + "Patient " + str(p) + " " 
+                         + "Cycle " + str(Cy))
+    PlotOutput.set_ylabel("% of Classes")
+    PlotOutput.set_xlabel("R Classes")
+    start, end = 0, 110
+    PlotOutput.yaxis.set_ticks(range(start, end, 10))     
+    
+    PlotOutput.yaxis.grid(which="major", color='lightgray', linestyle='-', linewidth=1)
+    
+    PlotCanvas.draw()
+    PlotCanvas.flush_events()
         
     worksheet.write(LastRowAvailable, 0, Cy, HorizAlign)
     
@@ -1210,6 +1340,11 @@ def SaveData(g, p, Cy):
     
     TableOutput.appendRow(Row)
     
+    TableView.resizeColumnsToContents()
+    TableView.resizeRowsToContents()
+    
+    TableView.scrollToBottom()
+    
     if Cy == Cycles - 1:
         LastRowAvailable += 2
         
@@ -1230,8 +1365,6 @@ def SaveData(g, p, Cy):
             LastRowAvailable += 1
         
     LastPatient = p
-    
-    
     
 def GetMi(ClassCount, CycleParticles):
     
